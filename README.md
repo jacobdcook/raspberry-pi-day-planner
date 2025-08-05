@@ -58,7 +58,37 @@ python windows_test.py
 - 📊 Progress reports and accountability
 - 🔄 Real-time updates
 
-### Option 2: Complete Raspberry Pi Setup
+### Option 2: Pi Simulation (Visual Preview)
+
+Want to see exactly how your Raspberry Pi will look and behave? Try our visual simulation:
+
+```bash
+# Install dependencies (includes pygame)
+pip install -r requirements_windows.txt
+
+# Run the Pi simulation
+python pi_simulation.py
+# or
+run_pi_simulation.bat
+```
+
+**Simulation Features:**
+
+- 🖥️ Full-screen display simulation (like Pi with monitor)
+- 🔔 Task notifications with DONE/SKIP buttons
+- ⏰ Idle screen showing current time and next task
+- 🖱️ Mouse/touch click handling
+- 🔄 Real-time updates and interactions
+- 🎮 Exact Pi behavior simulation
+
+**Controls:**
+- **SPACE**: Simulate task notification
+- **Mouse**: Click DONE/SKIP buttons
+- **ESC**: Exit simulation
+
+This gives you a perfect preview of your Pi experience!
+
+### Option 3: Complete Raspberry Pi Setup
 
 For full deployment with custom hardware integration.
 
