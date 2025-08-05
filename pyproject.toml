@@ -1,0 +1,147 @@
+[build-system]
+requires = ["setuptools>=61.0", "wheel"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "raspberry-pi-day-planner"
+version = "1.0.0"
+description = "A fullscreen day planner and reminder system for Raspberry Pi with HDMI display and audio alerts"
+readme = "README.md"
+license = {text = "MIT"}
+authors = [
+    {name = "Raspberry Pi Day Planner", email = "support@example.com"}
+]
+maintainers = [
+    {name = "Raspberry Pi Day Planner", email = "support@example.com"}
+]
+keywords = ["raspberry-pi", "day-planner", "reminder", "scheduler", "tkinter", "pygame"]
+classifiers = [
+    "Development Status :: 5 - Production/Stable",
+    "Intended Audience :: End Users/Desktop",
+    "License :: OSI Approved :: MIT License",
+    "Operating System :: POSIX :: Linux",
+    "Programming Language :: Python :: 3",
+    "Programming Language :: Python :: 3.8",
+    "Programming Language :: Python :: 3.9",
+    "Programming Language :: Python :: 3.10",
+    "Programming Language :: Python :: 3.11",
+    "Topic :: Desktop Environment",
+    "Topic :: Multimedia :: Sound/Audio",
+    "Topic :: Office/Business :: Scheduling",
+]
+requires-python = ">=3.8"
+dependencies = [
+    "PyYAML>=6.0.1",
+    "APScheduler>=3.10.4",
+    "python-dateutil>=2.8.2",
+    "pytz>=2023.3",
+    "pygame>=2.5.2",
+    "numpy>=1.24.3",
+    "watchdog>=3.0.0",
+    "fastapi>=0.104.1",
+    "uvicorn>=0.24.0",
+    "jinja2>=3.1.2",
+    "matplotlib>=3.7.2",
+    "pandas>=2.0.3",
+    "psutil>=5.9.5",
+]
+
+[project.optional-dependencies]
+dev = [
+    "pytest>=7.4.3",
+    "pytest-cov>=4.1.0",
+    "black>=23.11.0",
+    "flake8>=6.1.0",
+    "mypy>=1.7.1",
+    "pre-commit>=3.5.0",
+]
+docs = [
+    "Sphinx>=7.2.6",
+    "sphinx-rtd-theme>=1.3.0",
+    "myst-parser>=2.0.0",
+]
+
+[project.scripts]
+day-planner = "main:main"
+
+[project.urls]
+Homepage = "https://github.com/yourusername/raspberry-pi-day-planner"
+Documentation = "https://raspberry-pi-day-planner.readthedocs.io/"
+Repository = "https://github.com/yourusername/raspberry-pi-day-planner"
+"Bug Tracker" = "https://github.com/yourusername/raspberry-pi-day-planner/issues"
+
+[tool.setuptools.packages.find]
+where = ["."]
+include = ["modules*"]
+
+[tool.black]
+line-length = 88
+target-version = ['py38']
+include = '\.pyi?$'
+extend-exclude = '''
+/(
+  # directories
+  \.eggs
+  | \.git
+  | \.hg
+  | \.mypy_cache
+  | \.tox
+  | \.venv
+  | build
+  | dist
+)/
+'''
+
+[tool.mypy]
+python_version = "3.8"
+warn_return_any = true
+warn_unused_configs = true
+disallow_untyped_defs = true
+disallow_incomplete_defs = true
+check_untyped_defs = true
+disallow_untyped_decorators = true
+no_implicit_optional = true
+warn_redundant_casts = true
+warn_unused_ignores = true
+warn_no_return = true
+warn_unreachable = true
+strict_equality = true
+
+[[tool.mypy.overrides]]
+module = [
+    "pygame.*",
+    "matplotlib.*",
+    "pandas.*",
+]
+ignore_missing_imports = true
+
+[tool.pytest.ini_options]
+minversion = "6.0"
+addopts = "-ra -q --strict-markers --strict-config"
+testpaths = ["tests"]
+python_files = ["test_*.py", "*_test.py"]
+python_classes = ["Test*"]
+python_functions = ["test_*"]
+
+[tool.coverage.run]
+source = ["modules", "main.py"]
+omit = [
+    "*/tests/*",
+    "*/test_*",
+    "*/venv/*",
+    "*/__pycache__/*",
+]
+
+[tool.coverage.report]
+exclude_lines = [
+    "pragma: no cover",
+    "def __repr__",
+    "if self.debug:",
+    "if settings.DEBUG",
+    "raise AssertionError",
+    "raise NotImplementedError",
+    "if 0:",
+    "if __name__ == .__main__.:",
+    "class .*\\bProtocol\\):",
+    "@(abc\\.)?abstractmethod",
+] 
