@@ -82,6 +82,7 @@ run_pi_simulation.bat
 - 🎮 Exact Pi behavior simulation
 
 **Controls:**
+
 - **SPACE**: Simulate task notification
 - **Mouse**: Click DONE/SKIP buttons
 - **ESC**: Exit simulation
