@@ -49,8 +49,8 @@ class PeptideScheduler:
         
         # Available schedule files
         self.schedule_files = {
-            "sample": "schedule.yaml",
-            "personal": "schedule2.yaml",
+            "sample": "sample_schedule.yaml",  # This would be a demo file
+            "personal": "schedule.yaml",        # Your actual personal schedule
             "peptide": "peptide_schedule.yaml"
         }
         
@@ -87,9 +87,14 @@ class PeptideScheduler:
                 self.logger.error(f"Schedule file not found: {schedule_path}")
                 return False
             
-            # Load the selected schedule
-            with open(schedule_path, 'r') as f:
-                schedule_data = yaml.safe_load(f)
+            # Load the selected schedule with proper encoding
+            try:
+                with open(schedule_path, 'r', encoding='utf-8') as f:
+                    schedule_data = yaml.safe_load(f)
+            except UnicodeDecodeError:
+                # Fallback to system default encoding
+                with open(schedule_path, 'r', encoding='latin-1') as f:
+                    schedule_data = yaml.safe_load(f)
             
             if schedule_type == "peptide":
                 self.peptide_schedule = schedule_data

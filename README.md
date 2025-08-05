@@ -33,22 +33,100 @@ A sophisticated personal productivity system built for Raspberry Pi that combine
 
 ## 🚀 Quick Start
 
-### 1. **Clone the Repository**
+### Option 1: Windows Test Environment (No Raspberry Pi Required)
+
+Want to test the system before buying a Raspberry Pi? Perfect for trying out features and planning your setup.
 
 ```bash
-git clone https://github.com/yourusername/raspberry-pi-day-planner.git
+# Clone the repository
+git clone https://github.com/jacobdcook/raspberry-pi-day-planner.git
 cd raspberry-pi-day-planner
+
+# Install Windows dependencies
+pip install -r requirements_windows.txt
+
+# Run the Windows test environment
+python windows_test.py
 ```
 
-### 2. **Install Dependencies**
+**Windows Features:**
+
+- 🖥️ Full GUI interface with tabs
+- ⏱️ Start/stop task timers
+- 📋 Task list with priority indicators
+- 💉 Peptide protocol tracking
+- 📊 Progress reports and accountability
+- 🔄 Real-time updates
+
+### Option 2: Complete Raspberry Pi Setup
+
+For full deployment with custom hardware integration.
+
+#### **Step 1: Hardware Requirements**
+
+**Essential Components:**
+
+- Raspberry Pi 4 (4GB RAM recommended)
+- MicroSD card (32GB+ Class 10)
+- Power supply (5V/3A)
+- HDMI cable and monitor (for initial setup)
+- USB keyboard and mouse
+
+**Optional Hardware:**
+
+- 3.5" LCD display (for dedicated display)
+- Speaker system (for audio alerts)
+- LED strip (for visual notifications)
+- Push buttons (for manual controls)
+
+#### **Step 2: Raspberry Pi Setup**
 
 ```bash
-pip install -r requirements.txt
+# Download Raspberry Pi Imager
+# https://www.raspberrypi.com/software/
+
+# Flash Raspberry Pi OS (64-bit) to microSD card
+# Enable SSH and set WiFi credentials during imaging
+
+# Insert microSD card and boot Raspberry Pi
+# Connect via SSH: ssh pi@raspberrypi.local
 ```
 
-### 3. **Set Up Your Schedule**
+#### **Step 3: System Preparation**
 
-Create a `config/schedule.yaml` file with your personal schedule:
+```bash
+# Update system
+sudo apt update && sudo apt upgrade -y
+
+# Install Python and pip
+sudo apt install python3 python3-pip python3-venv -y
+
+# Install additional dependencies
+sudo apt install git screen htop -y
+
+# Set up virtual environment
+python3 -m venv dayplanner
+source dayplanner/bin/activate
+```
+
+#### **Step 4: Install Day Planner**
+
+```bash
+# Clone repository
+git clone https://github.com/jacobdcook/raspberry-pi-day-planner.git
+cd raspberry-pi-day-planner
+
+# Install Python dependencies
+pip install -r requirements.txt
+
+# Set up your personal schedule
+cp config/schedule.yaml config/schedule_personal.yaml
+# Edit config/schedule_personal.yaml with your tasks
+```
+
+#### **Step 5: Configure Your Schedule**
+
+Create your personal schedule in `config/schedule.yaml`:
 
 ```yaml
 # Example Schedule Configuration
@@ -97,24 +175,135 @@ health_metrics:
     unit: "kg"
     priority: 2
     audio_alert: false
+```
+
+#### **Step 6: Advanced Raspberry Pi Configuration**
+
+**Auto-Start Setup:**
+
+```bash
+# Create systemd service
+sudo cp raspberry-pi-day-planner.service /etc/systemd/system/
+sudo systemctl daemon-reload
+sudo systemctl enable raspberry-pi-day-planner
+sudo systemctl start raspberry-pi-day-planner
+
+# Check status
+sudo systemctl status raspberry-pi-day-planner
+```
+
+**Display Configuration (Optional):**
+
+```bash
+# For dedicated LCD displays
+sudo apt install python3-pil python3-pil.imagetk -y
+
+# Configure display rotation
+sudo nano /boot/config.txt
+# Add: display_rotate=0 (or 90, 180, 270)
+
+# For touch displays
+sudo apt install xinput-calibrator -y
+```
+
+**Audio Setup:**
+
+```bash
+# Test audio
+speaker-test -t wav -c 2
+
+# Configure audio output
+sudo raspi-config
+# Navigate to: System Options > Audio > Force 3.5mm jack
+```
+
+**Network Configuration:**
+
+```bash
+# Set static IP (optional)
+sudo nano /etc/dhcpcd.conf
+# Add:
+# interface eth0
+# static ip_address=192.168.1.100/24
+# static routers=192.168.1.1
+# static domain_name_servers=8.8.8.8
+```
+
+#### **Step 7: Custom Hardware Integration**
+
+**LED Strip Setup:**
+
+```bash
+# Install LED library
+pip install rpi.gpio neopixel
+
+# Test LED strip
+python -c "
+import board
+import neopixel
+pixels = neopixel.NeoPixel(board.D18, 8)
+pixels.fill((255, 0, 0))  # Red
+"
+```
+
+**Button Integration:**
+
+```bash
+# Test GPIO buttons
+python -c "
+import RPi.GPIO as GPIO
+GPIO.setmode(GPIO.BCM)
+GPIO.setup(17, GPIO.IN, pull_up_down=GPIO.PUD_UP)
+print('Button ready on GPIO 17')
+"
+```
+
+#### **Step 8: Web Interface Access**
+
+```bash
+# Access web dashboard
+# http://raspberrypi.local:8080
+# or http://YOUR_PI_IP:8080
+
+# Enable port forwarding (if needed)
+sudo ufw allow 8080
+```
+
+#### **Step 9: Monitoring & Maintenance**
+
+```bash
+# View logs
+sudo journalctl -u raspberry-pi-day-planner -f
+
+# Check system resources
+htop
+
+# Update application
+cd raspberry-pi-day-planner
+git pull
+pip install -r requirements.txt
+sudo systemctl restart raspberry-pi-day-planner
+```
 
 # Advanced Features
-advanced_features:
-  weather_check:
-    enabled: true
-    location: "New York"
-    check_time: "07:00"
 
-  system_monitor:
-    enabled: true
-    check_interval: 300 # 5 minutes
-```
+advanced_features:
+weather_check:
+enabled: true
+location: "New York"
+check_time: "07:00"
+
+system_monitor:
+enabled: true
+check_interval: 300 # 5 minutes
+
+````
 
 ### 4. **Run the Schedule Selector**
 
 ```bash
 python schedule_selector.py
-```
+````
 
 Choose your preferred schedule:
 
@@ -258,9 +447,152 @@ health_metrics:
   - title: "Metric Name"
     time: "HH:MM"
     metric_type: "weight/blood_pressure/etc"
-    target_value: value
-    unit: "unit"
 ```
+
+## 🔧 Troubleshooting
+
+### **Windows Test Environment Issues**
+
+1. **"No tasks loaded"**:
+
+   - Check that `config/schedule.yaml` exists and has proper YAML syntax
+   - Verify file encoding is UTF-8
+   - Ensure task sections (`morning_tasks`, `afternoon_tasks`) are properly formatted
+
+2. **"Charmap codec error"**:
+
+   - File encoding issue - ensure files are saved as UTF-8
+   - Re-save YAML files with UTF-8 encoding
+
+3. **"Module not found"**:
+
+   - Run `pip install -r requirements_windows.txt`
+   - Ensure Python 3.7+ is installed
+
+4. **GUI not opening**:
+   - Ensure tkinter is installed (usually included with Python)
+   - Try running `python -c "import tkinter; print('tkinter OK')"`
+
+### **Raspberry Pi Setup Issues**
+
+1. **Service not starting**:
+
+   ```bash
+   sudo journalctl -u raspberry-pi-day-planner -f
+   sudo systemctl status raspberry-pi-day-planner
+   ```
+
+2. **Audio not working**:
+
+   ```bash
+   speaker-test -t wav -c 2
+   sudo raspi-config  # System Options > Audio
+   ```
+
+3. **Display issues**:
+
+   ```bash
+   # Check HDMI connection
+   vcgencmd get_mem gpu
+
+   # Configure display rotation
+   sudo nano /boot/config.txt
+   # Add: display_rotate=0
+   ```
+
+4. **Network connectivity**:
+   ```bash
+   ping google.com
+   curl http://localhost:8080
+   sudo ufw allow 8080
+   ```
+
+### **Hardware Integration Issues**
+
+1. **LED strip not working**:
+
+   ```bash
+   # Test GPIO
+   python3 -c "import RPi.GPIO as GPIO; GPIO.setmode(GPIO.BCM); print('GPIO OK')"
+
+   # Check power supply (LED strips need 5V)
+   # Verify data pin connection
+   ```
+
+2. **Buttons not responding**:
+   ```bash
+   # Test button on GPIO 17
+   python3 -c "
+   import RPi.GPIO as GPIO
+   import time
+   GPIO.setmode(GPIO.BCM)
+   GPIO.setup(17, GPIO.IN, pull_up_down=GPIO.PUD_UP)
+   while True:
+       if GPIO.input(17) == False:
+           print('Button pressed!')
+           time.sleep(0.2)
+   "
+   ```
+
+### **Performance Optimization**
+
+```bash
+# Disable unnecessary services
+sudo systemctl disable bluetooth
+sudo systemctl disable avahi-daemon
+
+# Optimize memory usage
+echo 'vm.swappiness=10' | sudo tee -a /etc/sysctl.conf
+
+# Monitor resources
+htop
+free -h
+df -h
+
+# Check temperature
+vcgencmd measure_temp
+```
+
+### **Debug Commands**
+
+```bash
+# Check Python environment
+python3 -c "import yaml, tkinter, APScheduler; print('All dependencies OK')"
+
+# Test file permissions
+ls -la config/
+chmod 644 config/*.yaml
+
+# Verify schedule loading
+python3 -c "
+import yaml
+with open('config/schedule.yaml', 'r') as f:
+    data = yaml.safe_load(f)
+    print('Schedule loaded successfully')
+    print(f'Found {len(data.get(\"morning_tasks\", []))} morning tasks')
+    print(f'Found {len(data.get(\"afternoon_tasks\", []))} afternoon tasks')
+"
+
+# Check system logs
+sudo journalctl -u raspberry-pi-day-planner --since "1 hour ago"
+```
+
+## 📊 Resume Highlights
+
+This project demonstrates:
+
+- **Full-Stack Development**: Python backend with web interface and GUI
+- **IoT Integration**: Raspberry Pi hardware control and sensor integration
+- **Data Management**: YAML configuration with privacy-focused design
+- **System Administration**: Linux service management and automation
+- **Cross-Platform Development**: Windows testing environment with Pi deployment
+- **Health Tech**: Specialized peptide protocol tracking and analytics
+- **Privacy Engineering**: Git-based data protection and local storage
+- **Hardware Integration**: GPIO control, LED strips, and custom displays
+  target_value: value
+  unit: "unit"
+
+````
 
 ## 📊 Analytics & Progress
 
@@ -304,7 +636,7 @@ config/peptide_schedule.yaml # ❌ Gitignored
 
 # Only sample files are public:
 config/sample_schedule.yaml # ✅ Public (if created)
-```
+````
 
 ## 🚀 Deployment
 
