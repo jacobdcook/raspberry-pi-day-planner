@@ -268,6 +268,19 @@ class DisplayManager:
             )
             done_button.pack(side=tk.LEFT, padx=20)
             
+            # Skip button
+            skip_button = tk.Button(
+                button_frame,
+                text="SKIP",
+                font=('Arial', 20, 'bold'),
+                bg='gray',
+                fg='white',
+                width=10,
+                height=2,
+                command=lambda: self._on_skip_clicked(task)
+            )
+            skip_button.pack(side=tk.LEFT, padx=20)
+            
             # Snooze button
             snooze_button = tk.Button(
                 button_frame,
@@ -338,6 +351,15 @@ class DisplayManager:
         try:
             self.logger.info(f"Task completed: {task['title']}")
             
+            # Handle catch-up tasks specially
+            if task.get('is_catch_up', False):
+                catch_up_tasks = task.get('catch_up_tasks', [])
+                for catch_up_task in catch_up_tasks:
+                    catch_up_task['completed'] = True
+                self.logger.info(f"Completed catch-up task with {len(catch_up_tasks)} individual tasks")
+            else:
+                task['completed'] = True
+            
             # Log the completion
             if self.event_logger:
                 self.event_logger.log_task_completed(task)
@@ -374,6 +396,39 @@ class DisplayManager:
             
         except Exception as e:
             self.logger.error(f"Error handling snooze click: {e}")
+    
+    def _on_skip_clicked(self, task: Dict[str, Any]):
+        """Handle Skip button click."""
+        try:
+            self.logger.info(f"Task skipped: {task.get('title', 'Unknown')}")
+            
+            # Handle catch-up tasks specially
+            if task.get('is_catch_up', False):
+                catch_up_tasks = task.get('catch_up_tasks', [])
+                for catch_up_task in catch_up_tasks:
+                    catch_up_task['skipped'] = True
+                self.logger.info(f"Skipped catch-up task with {len(catch_up_tasks)} individual tasks")
+            else:
+                task['skipped'] = True
+            
+            # Log the skip
+            if self.event_logger:
+                self.event_logger.log_event(
+                    event_type='task_skipped',
+                    task_id=task.get('id'),
+                    task_title=task.get('title'),
+                    details="Task skipped for today"
+                )
+            
+            # Play skip sound
+            if self.audio_manager:
+                self.audio_manager.play_sound('skip')
+            
+            # Return to idle screen
+            self._return_to_idle()
+            
+        except Exception as e:
+            self.logger.error(f"Error handling skip click: {e}")
     
     def _return_to_idle(self):
         """Return to the idle screen."""

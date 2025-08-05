@@ -262,6 +262,11 @@ class TaskScheduler:
         try:
             self.logger.info(f"Task due: {task['title']}")
             
+            # Check if task is skipped
+            if task.get('skipped', False):
+                self.logger.info(f"Task skipped: {task['title']}")
+                return
+            
             # Log the task event
             if self.event_logger:
                 self.event_logger.log_task_shown(task)
@@ -367,4 +372,73 @@ class TaskScheduler:
             self.scheduler.resume_job(job_id)
             self.logger.info(f"Resumed job: {job_id}")
         except Exception as e:
-            self.logger.error(f"Failed to resume job {job_id}: {e}") 
+            self.logger.error(f"Failed to resume job {job_id}: {e}")
+    
+    def skip_task(self, task: Dict[str, Any]):
+        """
+        Mark a task as skipped for today.
+        
+        Args:
+            task: Task dictionary to skip.
+        """
+        try:
+            task['skipped'] = True
+            self.logger.info(f"Task skipped: {task.get('title', 'Unknown')}")
+            
+            # Log the skip event
+            if self.event_logger:
+                self.event_logger.log_event(
+                    event_type='task_skipped',
+                    task_id=task.get('id'),
+                    task_title=task.get('title'),
+                    details="Task skipped for today"
+                )
+                
+        except Exception as e:
+            self.logger.error(f"Failed to skip task: {e}")
+    
+    def complete_task(self, task: Dict[str, Any]):
+        """
+        Mark a task as completed.
+        
+        Args:
+            task: Task dictionary to complete.
+        """
+        try:
+            task['completed'] = True
+            self.logger.info(f"Task completed: {task.get('title', 'Unknown')}")
+            
+            # Log the completion event
+            if self.event_logger:
+                self.event_logger.log_task_completed(task)
+                
+        except Exception as e:
+            self.logger.error(f"Failed to complete task: {e}")
+    
+    def update_schedule(self, new_schedule: List[Dict[str, Any]]):
+        """
+        Update the schedule with new tasks.
+        
+        Args:
+            new_schedule: New list of task dictionaries.
+        """
+        try:
+            # Stop current scheduler
+            self.scheduler.shutdown(wait=True)
+            
+            # Clear existing jobs
+            self.scheduled_jobs.clear()
+            
+            # Update schedule
+            self.schedule = new_schedule
+            
+            # Restart scheduler
+            self.scheduler.start()
+            
+            # Reschedule all tasks
+            self._schedule_all_tasks()
+            
+            self.logger.info("Schedule updated successfully")
+            
+        except Exception as e:
+            self.logger.error(f"Failed to update schedule: {e}") 

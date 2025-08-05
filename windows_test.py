@@ -194,6 +194,13 @@ class WindowsDayPlanner:
         )
         self.complete_button.pack(side=tk.LEFT, padx=5)
         
+        self.skip_button = ttk.Button(
+            task_buttons_frame,
+            text="⏭️ Skip Task",
+            command=self.skip_current_task
+        )
+        self.skip_button.pack(side=tk.LEFT, padx=5)
+        
         self.refresh_button = ttk.Button(
             task_buttons_frame,
             text="🔄 Refresh",
@@ -288,6 +295,13 @@ class WindowsDayPlanner:
             command=self.complete_task_from_details
         )
         self.detail_complete_button.pack(side=tk.LEFT, padx=5)
+        
+        self.detail_skip_button = ttk.Button(
+            action_frame,
+            text="⏭️ Skip Task",
+            command=self.skip_task_from_details
+        )
+        self.detail_skip_button.pack(side=tk.LEFT, padx=5)
         
         # Store the current task being viewed
         self.current_detail_task = None
@@ -563,7 +577,13 @@ class WindowsDayPlanner:
                 self.task_listbox.delete(0, tk.END)
                 print(f"🔍 DEBUG: Loading {len(self.today_tasks)} tasks into listbox")
                 for i, task in enumerate(self.today_tasks):
-                    status = "✅" if task.get("completed", False) else "⏳"
+                    if task.get("skipped", False):
+                        status = "⏭️"
+                    elif task.get("completed", False):
+                        status = "✅"
+                    else:
+                        status = "⏳"
+                    
                     time_str = task.get("time", "No time")
                     title = task.get("title", "Untitled")
                     priority = task.get("priority", 3)
@@ -841,7 +861,7 @@ class WindowsDayPlanner:
                 
                 for task in block_tasks:
                     task_time = task.get("time", "00:00")
-                    if self.is_time_before(task_time, current_time_str) and not task.get("completed", False):
+                    if self.is_time_before(task_time, current_time_str) and not task.get("completed", False) and not task.get("skipped", False):
                         missed_tasks.append(task)
                 
                 if missed_tasks:
@@ -952,23 +972,100 @@ class WindowsDayPlanner:
         else:
             messagebox.showerror("Error", "Invalid task selection.")
     
+    def skip_current_task(self):
+        """Skip the currently selected task for today."""
+        if self.selected_task_index is None:
+            messagebox.showwarning("No Task Selected", "Please select a task to skip.")
+            return
+        
+        task_index = self.selected_task_index
+        if task_index < len(self.today_tasks):
+            task = self.today_tasks[task_index]
+            
+            # Handle catch-up tasks specially
+            if task.get("is_catch_up", False):
+                # Skip all individual tasks in the catch-up block
+                catch_up_tasks = task.get("catch_up_tasks", [])
+                for catch_up_task in catch_up_tasks:
+                    catch_up_task["skipped"] = True
+                
+                messagebox.showinfo(
+                    "Catch-Up Skipped", 
+                    f"⏭️ All missed tasks in '{task.get('title', 'Unknown')}' skipped for today!\n\n"
+                    f"This included {len(catch_up_tasks)} tasks that were missed earlier."
+                )
+            else:
+                task["skipped"] = True
+                self.status_var.set(f"Skipped: {task.get('title', 'Unknown')}")
+            
+            # Update the display
+            self.load_today_tasks()
+            
+            # Stop timer if this was the current task
+            if self.current_task == task:
+                self.stop_current_task()
+        else:
+            messagebox.showerror("Error", "Invalid task selection.")
+    
+    def skip_task_from_details(self):
+        """Skip the task from the details tab."""
+        if self.current_detail_task:
+            task = self.current_detail_task
+            
+            # Handle catch-up tasks specially
+            if task.get("is_catch_up", False):
+                # Skip all individual tasks in the catch-up block
+                catch_up_tasks = task.get("catch_up_tasks", [])
+                for catch_up_task in catch_up_tasks:
+                    catch_up_task["skipped"] = True
+                
+                messagebox.showinfo(
+                    "Catch-Up Skipped", 
+                    f"⏭️ All missed tasks in '{task.get('title', 'Unknown')}' skipped for today!\n\n"
+                    f"This included {len(catch_up_tasks)} tasks that were missed earlier."
+                )
+            else:
+                task["skipped"] = True
+                self.status_var.set(f"Skipped: {task.get('title', 'Unknown')}")
+            
+            # Update the display
+            self.load_today_tasks()
+            
+            # Stop timer if this was the current task
+            if self.current_task == task:
+                self.stop_current_task()
+            
+            # Go back to tasks tab
+            self.go_back_to_tasks()
+        else:
+            messagebox.showwarning("No Task", "No task selected to skip.")
+    
     def export_progress(self):
         """Export today's progress."""
         try:
             completed_tasks = [task for task in self.today_tasks if task.get("completed", False)]
+            skipped_tasks = [task for task in self.today_tasks if task.get("skipped", False)]
             total_tasks = len(self.today_tasks)
-            completion_rate = (len(completed_tasks) / total_tasks * 100) if total_tasks > 0 else 0
+            active_tasks = total_tasks - len(skipped_tasks)
+            completion_rate = (len(completed_tasks) / active_tasks * 100) if active_tasks > 0 else 0
             
             progress_report = f"Today's Progress Report\n"
             progress_report += f"========================\n"
             progress_report += f"Total Tasks: {total_tasks}\n"
+            progress_report += f"Active Tasks: {active_tasks}\n"
             progress_report += f"Completed: {len(completed_tasks)}\n"
+            progress_report += f"Skipped: {len(skipped_tasks)}\n"
             progress_report += f"Completion Rate: {completion_rate:.1f}%\n\n"
             
             if completed_tasks:
                 progress_report += "Completed Tasks:\n"
                 for task in completed_tasks:
                     progress_report += f"✅ {task.get('title', 'Unknown')}\n"
+            
+            if skipped_tasks:
+                progress_report += "\nSkipped Tasks:\n"
+                for task in skipped_tasks:
+                    progress_report += f"⏭️ {task.get('title', 'Unknown')}\n"
             
             messagebox.showinfo("Progress Report", progress_report)
             self.status_var.set("Progress report generated")

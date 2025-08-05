@@ -38,6 +38,7 @@ from modules.config_watcher import ConfigWatcher
 from modules.web_api import WebAPI
 from modules.analytics import Analytics
 from modules.monitor import SystemMonitor
+from modules.peptide_scheduler import PeptideScheduler
 
 
 class DayPlanner:
@@ -74,6 +75,12 @@ class DayPlanner:
         self.web_api = None
         self.analytics = None
         self.system_monitor = None
+        self.peptide_scheduler = None
+        
+        # Enhanced task management
+        self.today_tasks = []
+        self.skipped_tasks = set()
+        self.completed_tasks = set()
         
         # Flag to track if application is running
         self.running = False
@@ -114,11 +121,32 @@ class DayPlanner:
             self.event_logger = EventLogger()
             self.logger.info("Event logger initialized")
             
-            # Load and validate schedule
+            # Initialize peptide scheduler
+            config_dir = Path(__file__).parent / "config"
+            self.peptide_scheduler = PeptideScheduler(config_dir=str(config_dir))
+            
+            # Load personal schedule
+            if self.peptide_scheduler.select_schedule("personal"):
+                self.logger.info("✅ Personal schedule loaded successfully!")
+            elif self.peptide_scheduler.select_schedule("sample"):
+                self.logger.info("⚠️ Using sample schedule (personal not found)")
+            else:
+                self.logger.warning("⚠️ No schedules found")
+            
+            # Load peptide schedule
+            if self.peptide_scheduler.load_peptide_schedule():
+                self.logger.info("✅ Peptide schedule loaded successfully!")
+            else:
+                self.logger.info("⚠️ No peptide schedule found")
+            
+            # Load and validate schedule using traditional loader as fallback
             config_path = self.args.config if self.args.config else None
             self.schedule_loader = ScheduleLoader(config_path=config_path)
             schedule = self.schedule_loader.load_schedule()
             self.logger.info(f"Loaded schedule with {len(schedule)} tasks")
+            
+            # Load today's tasks with enhanced functionality
+            self._load_today_tasks()
             
             # Initialize audio manager
             self.audio_manager = AudioManager()
@@ -210,6 +238,152 @@ class DayPlanner:
                          capture_output=True, timeout=5)
         except Exception as e:
             self.logger.warning(f"Could not send notification: {e}")
+    
+    def _load_today_tasks(self):
+        """Load today's tasks with enhanced functionality including catch-up tasks."""
+        try:
+            if self.peptide_scheduler and self.peptide_scheduler.main_schedule:
+                # Get all task sections
+                all_tasks = []
+                
+                # Check for different task section names
+                task_sections = ["tasks", "morning_tasks", "afternoon_tasks", "evening_tasks", "daily_tasks"]
+                
+                for section in task_sections:
+                    if section in self.peptide_scheduler.main_schedule:
+                        section_tasks = self.peptide_scheduler.main_schedule[section]
+                        if isinstance(section_tasks, list):
+                            all_tasks.extend(section_tasks)
+                
+                # Filter tasks for today (or show all if no date specified)
+                today = datetime.now().strftime("%Y-%m-%d")
+                
+                self.today_tasks = []
+                for task in all_tasks:
+                    # If task has a date, check if it's today
+                    if "date" in task:
+                        if task.get("date") == today:
+                            self.today_tasks.append(task)
+                    else:
+                        # If no date specified, assume it's a daily task
+                        self.today_tasks.append(task)
+                
+                # Sort tasks by time
+                self.today_tasks.sort(key=lambda x: x.get("time", "00:00"))
+                
+                # Create catch-up tasks for missed time blocks
+                self.today_tasks = self._create_catch_up_tasks(self.today_tasks)
+                
+                self.logger.info(f"Loaded {len(self.today_tasks)} tasks for today")
+            else:
+                self.logger.warning("No schedule loaded")
+        except Exception as e:
+            self.logger.error(f"Error loading tasks: {e}")
+    
+    def _create_catch_up_tasks(self, tasks):
+        """Create consolidated catch-up tasks for missed time blocks."""
+        from datetime import datetime
+        
+        current_time = datetime.now()
+        current_hour = current_time.hour
+        current_minute = current_time.minute
+        current_time_str = f"{current_hour:02d}:{current_minute:02d}"
+        
+        # Define time blocks
+        time_blocks = {
+            "morning": {"start": "06:00", "end": "10:00", "name": "Morning Routine"},
+            "mid_morning": {"start": "10:00", "end": "12:00", "name": "Mid-Morning Tasks"},
+            "afternoon": {"start": "12:00", "end": "16:00", "name": "Afternoon Tasks"},
+            "evening": {"start": "16:00", "end": "20:00", "name": "Evening Tasks"},
+            "night": {"start": "20:00", "end": "23:59", "name": "Night Routine"}
+        }
+        
+        # Group tasks by time blocks
+        tasks_by_block = {}
+        for task in tasks:
+            task_time = task.get("time", "00:00")
+            block_found = False
+            
+            for block_name, block_info in time_blocks.items():
+                if self._is_time_between(task_time, block_info["start"], block_info["end"]):
+                    if block_name not in tasks_by_block:
+                        tasks_by_block[block_name] = []
+                    tasks_by_block[block_name].append(task)
+                    block_found = True
+                    break
+            
+            if not block_found:
+                # Default to current block or next available
+                if "other" not in tasks_by_block:
+                    tasks_by_block["other"] = []
+                tasks_by_block["other"].append(task)
+        
+        # Create catch-up tasks for missed blocks
+        catch_up_tasks = []
+        for block_name, block_info in time_blocks.items():
+            if block_name in tasks_by_block:
+                block_tasks = tasks_by_block[block_name]
+                missed_tasks = []
+                
+                for task in block_tasks:
+                    task_time = task.get("time", "00:00")
+                    if self._is_time_before(task_time, current_time_str) and not task.get("completed", False) and not task.get("skipped", False):
+                        missed_tasks.append(task)
+                
+                if missed_tasks:
+                    # Create consolidated catch-up task
+                    catch_up_task = {
+                        "title": f"🚨 CATCH UP: {block_info['name']}",
+                        "time": current_time_str,
+                        "priority": 1,  # High priority
+                        "duration": len(missed_tasks) * 15,  # Estimate 15 min per task
+                        "notes": f"URGENT: Complete these missed tasks ASAP:\n\n" + 
+                                "\n".join([f"• {task.get('title', 'Unknown')} ({task.get('time', 'No time')})" 
+                                          for task in missed_tasks]),
+                        "catch_up_tasks": missed_tasks,
+                        "is_catch_up": True
+                    }
+                    catch_up_tasks.append(catch_up_task)
+        
+        # Add remaining tasks that aren't in catch-up blocks
+        remaining_tasks = []
+        for task in tasks:
+            if not any(task in catch_up_task.get("catch_up_tasks", []) 
+                      for catch_up_task in catch_up_tasks):
+                remaining_tasks.append(task)
+        
+        # Combine catch-up tasks (at the top) with remaining tasks
+        final_tasks = catch_up_tasks + remaining_tasks
+        
+        return final_tasks
+    
+    def _is_time_between(self, time_str, start_str, end_str):
+        """Check if a time is between start and end times."""
+        try:
+            time_parts = time_str.split(":")
+            start_parts = start_str.split(":")
+            end_parts = end_str.split(":")
+            
+            time_minutes = int(time_parts[0]) * 60 + int(time_parts[1])
+            start_minutes = int(start_parts[0]) * 60 + int(start_parts[1])
+            end_minutes = int(end_parts[0]) * 60 + int(end_parts[1])
+            
+            return start_minutes <= time_minutes <= end_minutes
+        except:
+            return False
+    
+    def _is_time_before(self, time_str, current_str):
+        """Check if a time is before the current time."""
+        try:
+            time_parts = time_str.split(":")
+            current_parts = current_str.split(":")
+            
+            time_minutes = int(time_parts[0]) * 60 + int(time_parts[1])
+            current_minutes = int(current_parts[0]) * 60 + int(current_parts[1])
+            
+            return time_minutes < current_minutes
+        except:
+            return False
     
     def start(self):
         """Start the day planner application."""
