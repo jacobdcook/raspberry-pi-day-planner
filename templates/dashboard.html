@@ -1,0 +1,602 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Raspberry Pi Day Planner - Dashboard</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            color: #333;
+        }
+
+        .container {
+            max-width: 1200px;
+            margin: 0 auto;
+            padding: 20px;
+        }
+
+        .header {
+            text-align: center;
+            margin-bottom: 30px;
+            color: white;
+        }
+
+        .header h1 {
+            font-size: 2.5rem;
+            margin-bottom: 10px;
+            text-shadow: 2px 2px 4px rgba(0,0,0,0.3);
+        }
+
+        .header p {
+            font-size: 1.1rem;
+            opacity: 0.9;
+        }
+
+        .dashboard-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+            gap: 20px;
+            margin-bottom: 30px;
+        }
+
+        .card {
+            background: white;
+            border-radius: 15px;
+            padding: 25px;
+            box-shadow: 0 10px 30px rgba(0,0,0,0.1);
+            transition: transform 0.3s ease, box-shadow 0.3s ease;
+        }
+
+        .card:hover {
+            transform: translateY(-5px);
+            box-shadow: 0 15px 40px rgba(0,0,0,0.15);
+        }
+
+        .card h3 {
+            color: #667eea;
+            margin-bottom: 15px;
+            font-size: 1.3rem;
+            border-bottom: 2px solid #f0f0f0;
+            padding-bottom: 10px;
+        }
+
+        .status-indicator {
+            display: inline-block;
+            width: 12px;
+            height: 12px;
+            border-radius: 50%;
+            margin-right: 8px;
+        }
+
+        .status-healthy { background-color: #4CAF50; }
+        .status-warning { background-color: #FF9800; }
+        .status-error { background-color: #F44336; }
+
+        .metric {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 10px;
+            padding: 8px 0;
+            border-bottom: 1px solid #f0f0f0;
+        }
+
+        .metric:last-child {
+            border-bottom: none;
+        }
+
+        .metric-label {
+            font-weight: 500;
+            color: #666;
+        }
+
+        .metric-value {
+            font-weight: bold;
+            color: #333;
+        }
+
+        .progress-bar {
+            width: 100%;
+            height: 8px;
+            background-color: #f0f0f0;
+            border-radius: 4px;
+            overflow: hidden;
+            margin-top: 5px;
+        }
+
+        .progress-fill {
+            height: 100%;
+            background: linear-gradient(90deg, #4CAF50, #8BC34A);
+            transition: width 0.3s ease;
+        }
+
+        .progress-fill.warning {
+            background: linear-gradient(90deg, #FF9800, #FFC107);
+        }
+
+        .progress-fill.error {
+            background: linear-gradient(90deg, #F44336, #E91E63);
+        }
+
+        .task-list {
+            max-height: 300px;
+            overflow-y: auto;
+        }
+
+        .task-item {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 12px;
+            margin-bottom: 8px;
+            background-color: #f8f9fa;
+            border-radius: 8px;
+            border-left: 4px solid #667eea;
+        }
+
+        .task-info h4 {
+            color: #333;
+            margin-bottom: 4px;
+        }
+
+        .task-info p {
+            color: #666;
+            font-size: 0.9rem;
+        }
+
+        .task-time {
+            color: #667eea;
+            font-weight: bold;
+        }
+
+        .controls {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            gap: 15px;
+            margin-top: 20px;
+        }
+
+        .btn {
+            padding: 12px 20px;
+            border: none;
+            border-radius: 8px;
+            font-size: 1rem;
+            font-weight: 500;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            text-decoration: none;
+            display: inline-block;
+            text-align: center;
+        }
+
+        .btn-primary {
+            background: linear-gradient(135deg, #667eea, #764ba2);
+            color: white;
+        }
+
+        .btn-primary:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 5px 15px rgba(102, 126, 234, 0.4);
+        }
+
+        .btn-secondary {
+            background: #f8f9fa;
+            color: #333;
+            border: 2px solid #e9ecef;
+        }
+
+        .btn-secondary:hover {
+            background: #e9ecef;
+            transform: translateY(-2px);
+        }
+
+        .btn-danger {
+            background: linear-gradient(135deg, #F44336, #E91E63);
+            color: white;
+        }
+
+        .btn-danger:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 5px 15px rgba(244, 67, 54, 0.4);
+        }
+
+        .refresh-btn {
+            position: fixed;
+            bottom: 30px;
+            right: 30px;
+            width: 60px;
+            height: 60px;
+            border-radius: 50%;
+            background: linear-gradient(135deg, #667eea, #764ba2);
+            color: white;
+            border: none;
+            font-size: 1.5rem;
+            cursor: pointer;
+            box-shadow: 0 5px 20px rgba(0,0,0,0.2);
+            transition: all 0.3s ease;
+        }
+
+        .refresh-btn:hover {
+            transform: rotate(180deg) scale(1.1);
+        }
+
+        .loading {
+            text-align: center;
+            padding: 40px;
+            color: #666;
+        }
+
+        .error {
+            background: #ffebee;
+            color: #c62828;
+            padding: 15px;
+            border-radius: 8px;
+            margin-bottom: 20px;
+            border-left: 4px solid #f44336;
+        }
+
+        @media (max-width: 768px) {
+            .container {
+                padding: 10px;
+            }
+            
+            .header h1 {
+                font-size: 2rem;
+            }
+            
+            .dashboard-grid {
+                grid-template-columns: 1fr;
+            }
+            
+            .controls {
+                grid-template-columns: 1fr;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <h1>🍓 Raspberry Pi Day Planner</h1>
+            <p>Real-time monitoring and control dashboard</p>
+        </div>
+
+        <div id="error-container"></div>
+
+        <div class="dashboard-grid">
+            <!-- System Status Card -->
+            <div class="card">
+                <h3>
+                    <span class="status-indicator" id="system-status-indicator"></span>
+                    System Status
+                </h3>
+                <div id="system-status-content">
+                    <div class="loading">Loading system status...</div>
+                </div>
+            </div>
+
+            <!-- Task Overview Card -->
+            <div class="card">
+                <h3>📋 Task Overview</h3>
+                <div id="task-overview-content">
+                    <div class="loading">Loading task data...</div>
+                </div>
+            </div>
+
+            <!-- Performance Metrics Card -->
+            <div class="card">
+                <h3>📊 Performance</h3>
+                <div id="performance-content">
+                    <div class="loading">Loading performance data...</div>
+                </div>
+            </div>
+
+            <!-- Next Tasks Card -->
+            <div class="card">
+                <h3>⏰ Next Tasks</h3>
+                <div class="task-list" id="next-tasks-content">
+                    <div class="loading">Loading upcoming tasks...</div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Control Panel -->
+        <div class="card">
+            <h3>🎛️ Control Panel</h3>
+            <div class="controls">
+                <button class="btn btn-primary" onclick="reloadConfig()">
+                    🔄 Reload Configuration
+                </button>
+                <button class="btn btn-secondary" onclick="testAudio()">
+                    🔊 Test Audio
+                </button>
+                <button class="btn btn-secondary" onclick="exportData()">
+                    📊 Export Data
+                </button>
+                <button class="btn btn-danger" onclick="restartService()">
+                    🔄 Restart Service
+                </button>
+            </div>
+        </div>
+
+        <button class="refresh-btn" onclick="refreshDashboard()" title="Refresh Dashboard">
+            🔄
+        </button>
+    </div>
+
+    <script>
+        // API base URL
+        const API_BASE = window.location.origin;
+
+        // Dashboard refresh interval (30 seconds)
+        const REFRESH_INTERVAL = 30000;
+
+        // Initialize dashboard
+        document.addEventListener('DOMContentLoaded', function() {
+            refreshDashboard();
+            setInterval(refreshDashboard, REFRESH_INTERVAL);
+        });
+
+        async function refreshDashboard() {
+            try {
+                await Promise.all([
+                    loadSystemStatus(),
+                    loadTaskOverview(),
+                    loadPerformanceMetrics(),
+                    loadNextTasks()
+                ]);
+            } catch (error) {
+                showError('Failed to refresh dashboard: ' + error.message);
+            }
+        }
+
+        async function loadSystemStatus() {
+            try {
+                const response = await fetch(`${API_BASE}/status`);
+                const data = await response.json();
+                
+                const indicator = document.getElementById('system-status-indicator');
+                const content = document.getElementById('system-status-content');
+                
+                // Update status indicator
+                indicator.className = `status-indicator status-${data.status === 'running' ? 'healthy' : 'error'}`;
+                
+                // Update content
+                content.innerHTML = `
+                    <div class="metric">
+                        <span class="metric-label">Status:</span>
+                        <span class="metric-value">${data.status}</span>
+                    </div>
+                    <div class="metric">
+                        <span class="metric-label">Uptime:</span>
+                        <span class="metric-value">${data.uptime}</span>
+                    </div>
+                    <div class="metric">
+                        <span class="metric-label">Total Tasks:</span>
+                        <span class="metric-value">${data.total_tasks}</span>
+                    </div>
+                    <div class="metric">
+                        <span class="metric-label">Active Tasks:</span>
+                        <span class="metric-value">${data.active_tasks}</span>
+                    </div>
+                    <div class="metric">
+                        <span class="metric-label">Completed Today:</span>
+                        <span class="metric-value">${data.completed_today}</span>
+                    </div>
+                    <div class="metric">
+                        <span class="metric-label">Snoozed Today:</span>
+                        <span class="metric-value">${data.snoozed_today}</span>
+                    </div>
+                `;
+            } catch (error) {
+                document.getElementById('system-status-content').innerHTML = 
+                    '<div class="error">Failed to load system status</div>';
+            }
+        }
+
+        async function loadTaskOverview() {
+            try {
+                const response = await fetch(`${API_BASE}/status`);
+                const data = await response.json();
+                
+                const content = document.getElementById('task-overview-content');
+                const completionRate = data.total_tasks > 0 ? 
+                    Math.round((data.completed_today / data.total_tasks) * 100) : 0;
+                
+                content.innerHTML = `
+                    <div class="metric">
+                        <span class="metric-label">Completion Rate:</span>
+                        <span class="metric-value">${completionRate}%</span>
+                    </div>
+                    <div class="progress-bar">
+                        <div class="progress-fill ${completionRate < 50 ? 'error' : completionRate < 80 ? 'warning' : ''}" 
+                             style="width: ${completionRate}%"></div>
+                    </div>
+                    <div class="metric">
+                        <span class="metric-label">Tasks Scheduled:</span>
+                        <span class="metric-value">${data.total_tasks}</span>
+                    </div>
+                    <div class="metric">
+                        <span class="metric-label">Tasks Completed:</span>
+                        <span class="metric-value">${data.completed_today}</span>
+                    </div>
+                    <div class="metric">
+                        <span class="metric-label">Tasks Snoozed:</span>
+                        <span class="metric-value">${data.snoozed_today}</span>
+                    </div>
+                `;
+            } catch (error) {
+                document.getElementById('task-overview-content').innerHTML = 
+                    '<div class="error">Failed to load task overview</div>';
+            }
+        }
+
+        async function loadPerformanceMetrics() {
+            try {
+                const response = await fetch(`${API_BASE}/status`);
+                const data = await response.json();
+                const sysInfo = data.system_info || {};
+                
+                const content = document.getElementById('performance-content');
+                content.innerHTML = `
+                    <div class="metric">
+                        <span class="metric-label">Platform:</span>
+                        <span class="metric-value">${sysInfo.platform || 'Unknown'}</span>
+                    </div>
+                    <div class="metric">
+                        <span class="metric-label">Python Version:</span>
+                        <span class="metric-value">${sysInfo.python_version || 'Unknown'}</span>
+                    </div>
+                    <div class="metric">
+                        <span class="metric-label">Raspberry Pi:</span>
+                        <span class="metric-value">${sysInfo.is_raspberry_pi ? 'Yes' : 'No'}</span>
+                    </div>
+                    <div class="metric">
+                        <span class="metric-label">CPU Cores:</span>
+                        <span class="metric-value">${sysInfo.cpu_count || 'Unknown'}</span>
+                    </div>
+                    <div class="metric">
+                        <span class="metric-label">Memory:</span>
+                        <span class="metric-value">${formatBytes(sysInfo.memory_total)}</span>
+                    </div>
+                `;
+            } catch (error) {
+                document.getElementById('performance-content').innerHTML = 
+                    '<div class="error">Failed to load performance metrics</div>';
+            }
+        }
+
+        async function loadNextTasks() {
+            try {
+                const response = await fetch(`${API_BASE}/tasks`);
+                const tasks = await response.json();
+                
+                const content = document.getElementById('next-tasks-content');
+                
+                if (tasks.length === 0) {
+                    content.innerHTML = '<div class="loading">No upcoming tasks</div>';
+                    return;
+                }
+                
+                const taskHtml = tasks.slice(0, 5).map(task => `
+                    <div class="task-item">
+                        <div class="task-info">
+                            <h4>${task.title}</h4>
+                            <p>${task.notes || 'No notes'}</p>
+                        </div>
+                        <div class="task-time">${task.time}</div>
+                    </div>
+                `).join('');
+                
+                content.innerHTML = taskHtml;
+            } catch (error) {
+                document.getElementById('next-tasks-content').innerHTML = 
+                    '<div class="error">Failed to load next tasks</div>';
+            }
+        }
+
+        async function reloadConfig() {
+            try {
+                const response = await fetch(`${API_BASE}/reload`, { method: 'POST' });
+                const result = await response.json();
+                
+                if (response.ok) {
+                    showSuccess('Configuration reloaded successfully');
+                    refreshDashboard();
+                } else {
+                    showError('Failed to reload configuration: ' + result.detail);
+                }
+            } catch (error) {
+                showError('Failed to reload configuration: ' + error.message);
+            }
+        }
+
+        async function testAudio() {
+            try {
+                const response = await fetch(`${API_BASE}/test-audio`, { method: 'POST' });
+                const result = await response.json();
+                
+                if (response.ok) {
+                    showSuccess('Audio test played successfully');
+                } else {
+                    showError('Failed to test audio: ' + result.detail);
+                }
+            } catch (error) {
+                showError('Failed to test audio: ' + error.message);
+            }
+        }
+
+        async function exportData() {
+            try {
+                const response = await fetch(`${API_BASE}/export`);
+                if (response.ok) {
+                    const blob = await response.blob();
+                    const url = window.URL.createObjectURL(blob);
+                    const a = document.createElement('a');
+                    a.href = url;
+                    a.download = `day-planner-export-${new Date().toISOString().split('T')[0]}.json`;
+                    a.click();
+                    window.URL.revokeObjectURL(url);
+                    showSuccess('Data exported successfully');
+                } else {
+                    showError('Failed to export data');
+                }
+            } catch (error) {
+                showError('Failed to export data: ' + error.message);
+            }
+        }
+
+        async function restartService() {
+            if (!confirm('Are you sure you want to restart the service? This will temporarily stop the day planner.')) {
+                return;
+            }
+            
+            try {
+                const response = await fetch(`${API_BASE}/restart`, { method: 'POST' });
+                const result = await response.json();
+                
+                if (response.ok) {
+                    showSuccess('Service restart initiated');
+                    setTimeout(refreshDashboard, 5000); // Refresh after 5 seconds
+                } else {
+                    showError('Failed to restart service: ' + result.detail);
+                }
+            } catch (error) {
+                showError('Failed to restart service: ' + error.message);
+            }
+        }
+
+        function showError(message) {
+            const container = document.getElementById('error-container');
+            container.innerHTML = `<div class="error">${message}</div>`;
+            setTimeout(() => {
+                container.innerHTML = '';
+            }, 5000);
+        }
+
+        function showSuccess(message) {
+            const container = document.getElementById('error-container');
+            container.innerHTML = `<div class="error" style="background: #e8f5e8; color: #2e7d32; border-left-color: #4caf50;">${message}</div>`;
+            setTimeout(() => {
+                container.innerHTML = '';
+            }, 3000);
+        }
+
+        function formatBytes(bytes) {
+            if (!bytes) return 'Unknown';
+            const sizes = ['Bytes', 'KB', 'MB', 'GB'];
+            const i = Math.floor(Math.log(bytes) / Math.log(1024));
+            return Math.round(bytes / Math.pow(1024, i) * 100) / 100 + ' ' + sizes[i];
+        }
+    </script>
+</body>
+</html> 

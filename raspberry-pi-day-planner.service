@@ -1,0 +1,28 @@
+[Unit]
+Description=Raspberry Pi Day Planner
+After=network.target graphical-session.target
+Wants=network.target
+
+[Service]
+Type=simple
+User=pi
+Group=pi
+WorkingDirectory=/home/pi/raspberry-pi-day-planner
+Environment=DISPLAY=:0
+Environment=XAUTHORITY=/home/pi/.Xauthority
+ExecStart=/usr/bin/python3 /home/pi/raspberry-pi-day-planner/main.py
+Restart=always
+RestartSec=10
+StandardOutput=journal
+StandardError=journal
+
+# Security settings
+NoNewPrivileges=true
+PrivateTmp=true
+ProtectSystem=strict
+ProtectHome=true
+ReadWritePaths=/home/pi/raspberry-pi-day-planner/data
+ReadWritePaths=/home/pi/raspberry-pi-day-planner/logs
+
+[Install]
+WantedBy=multi-user.target 
