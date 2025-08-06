@@ -1,6 +1,6 @@
 # Raspberry Pi Day Planner 🚀
 
-A comprehensive, intelligent day planning system designed for Raspberry Pi with advanced features for productivity, health tracking, and personal development.
+A comprehensive, intelligent day planning system designed for Raspberry Pi with advanced features for productivity, task management, and personal development.
 
 ## ✨ **Latest Features (Phase 5 - Advanced UI/UX)**
 
@@ -103,7 +103,6 @@ See [RASPBERRY_PI_SETUP_GUIDE.md](RASPBERRY_PI_SETUP_GUIDE.md) for full hardware
 
 ### **Personal Schedule** (Gitignored for Privacy)
 - `config/schedule.yaml`: Your personal schedule (not tracked by Git)
-- `config/peptide_schedule.yaml`: BPC-157 + TB-500 dosing protocol
 - Automatic schedule loading with fallback to sample
 
 ### **Sample Schedule** (Public)

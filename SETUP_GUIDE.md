@@ -170,23 +170,7 @@ http://your-raspberry-pi-ip:8080
 
 Your `config/schedule.yaml` file is automatically excluded from Git to protect your privacy. Only you can see your personal schedule.
 
-## 💉 Peptide Protocol Setup (Optional)
 
-If you're tracking peptide protocols, create `config/peptide_schedule.yaml`:
-
-```yaml
-peptide_protocol:
-  protocol_name: "Your Protocol Name"
-  protocol_duration: "Start Date to End Date"
-  administration_time: "12:15"
-  priority: 1
-
-  august_2025:
-    "2025-08-04":
-      bpc_157: "Your BPC-157 dose"
-      tb_500: "Your TB-500 dose"
-      notes: "Protocol notes"
-```
 
 ## 🎯 Tips for Success
 
@@ -199,7 +183,7 @@ peptide_protocol:
 ## 🆘 Need Help?
 
 - Check the main README.md for detailed documentation
-- Run `python peptide_integration.py` to test the system
+- Run `python test_installation.py` to test the system
 - Use `python schedule_selector.py` to switch schedules
 
 ---
