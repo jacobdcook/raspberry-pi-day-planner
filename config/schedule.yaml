@@ -1,0 +1,91 @@
+morning_tasks:
+  - title: "Wake Up & Hydrate"
+    time: "07:00"
+    notes: "Drink 16 oz water with lemon + Himalayan salt"
+    duration: 5
+  - title: "Take Supplements"
+    time: "07:05"
+    notes: "Vitamin D3+K2 (2000 IU), Fish Oil (1000mg), Probiotics"
+    duration: 2
+  - title: "Cold Shower"
+    time: "07:10"
+    notes: "2-3 minutes cold exposure for norepinephrine boost"
+    duration: 3
+  - title: "Breakfast & Planning"
+    time: "07:20"
+    notes: "Beef sweet-potato hash + carrots. Plan today's top 3 priorities"
+    duration: 20
+  - title: "Morning Walk"
+    time: "08:00"
+    notes: "20 min walk for sunlight + movement"
+    duration: 20
+  - title: "Work Session 1"
+    time: "09:00"
+    notes: "Deep work - most important task"
+    duration: 90
+  - title: "Break & Stretch"
+    time: "10:30"
+    notes: "5 min movement + eye rest"
+    duration: 5
+  - title: "Work Session 2"
+    time: "10:35"
+    notes: "Secondary priority task"
+    duration: 60
+  - title: "Lunch Break"
+    time: "11:35"
+    notes: "Protein-rich meal + 10 min walk"
+    duration: 45
+  - title: "Work Session 3"
+    time: "12:20"
+    notes: "Administrative tasks & emails"
+    duration: 60
+  - title: "Afternoon Break"
+    time: "13:20"
+    notes: "Light snack + hydration"
+    duration: 15
+  - title: "Work Session 4"
+    time: "13:35"
+    notes: "Creative work or learning"
+    duration: 90
+
+afternoon_tasks:
+  - title: "Exercise"
+    time: "15:05"
+    notes: "Strength training or cardio"
+    duration: 45
+  - title: "Shower & Recovery"
+    time: "15:50"
+    notes: "Cold shower + protein shake"
+    duration: 15
+  - title: "Work Session 5"
+    time: "16:05"
+    notes: "Review & planning for tomorrow"
+    duration: 60
+  - title: "Evening Walk"
+    time: "17:05"
+    notes: "30 min walk for sunset + reflection"
+    duration: 30
+  - title: "Dinner"
+    time: "17:35"
+    notes: "Balanced meal with family"
+    duration: 45
+  - title: "Evening Routine"
+    time: "18:20"
+    notes: "Journaling + gratitude practice"
+    duration: 20
+  - title: "Reading"
+    time: "18:40"
+    notes: "30 min reading (no screens)"
+    duration: 30
+  - title: "Prepare for Tomorrow"
+    time: "19:10"
+    notes: "Lay out clothes, pack bag"
+    duration: 10
+  - title: "Relaxation"
+    time: "19:20"
+    notes: "Light stretching + meditation"
+    duration: 20
+  - title: "Bedtime"
+    time: "19:40"
+    notes: "Sleep hygiene routine"
+    duration: 20

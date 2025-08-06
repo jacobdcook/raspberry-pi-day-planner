@@ -1,0 +1,37 @@
+{
+  "tasks": [
+    {
+      "task_id": "task_001",
+      "task_title": "Morning Meditation",
+      "reason": "Overslept and missed the time window",
+      "original_date": "2024-01-15",
+      "added_date": "2025-08-05T14:45:19.091511",
+      "priority": 1,
+      "redeemed": true,
+      "late_completion": true,
+      "redeemed_date": "2025-08-05T14:45:19.094014"
+    },
+    {
+      "task_id": "task_002",
+      "task_title": "Take Supplements",
+      "reason": "Forgot to bring supplements to work",
+      "original_date": "2024-01-14",
+      "added_date": "2025-08-05T14:45:19.092508",
+      "priority": 2,
+      "redeemed": true,
+      "late_completion": true,
+      "redeemed_date": "2025-08-05T14:45:42.804370"
+    },
+    {
+      "task_id": "task_003",
+      "task_title": "Evening Walk",
+      "reason": "Weather was bad, will do tomorrow",
+      "original_date": "2024-01-13",
+      "added_date": "2025-08-05T14:45:19.092508",
+      "priority": 3,
+      "redeemed": false,
+      "late_completion": false
+    }
+  ],
+  "last_updated": "2025-08-05T14:45:19.092508"
+}
