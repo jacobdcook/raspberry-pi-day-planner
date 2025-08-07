@@ -387,6 +387,8 @@ class PiSimulation:
     def speak_message(self, message):
         """Speak a message using ElevenLabs voice."""
         if not self.voice_engine or not self.api_key:
+            # Fallback to WAV sound
+            self.play_sound("alert")
             return
         
         try:
@@ -398,27 +400,92 @@ class PiSimulation:
                     temp_file.write(audio)
                     temp_file_path = temp_file.name
                 
-                # Play audio using pygame mixer
-                pygame.mixer.init()
-                pygame.mixer.music.load(temp_file_path)
-                pygame.mixer.music.play()
+                # Try to convert MP3 to WAV using ffmpeg if available
+                try:
+                    import subprocess
+                    wav_path = temp_file_path.replace('.mp3', '.wav')
+                    subprocess.run(['ffmpeg', '-i', temp_file_path, '-acodec', 'pcm_s16le', 
+                                  '-ar', '44100', '-ac', '2', wav_path, '-y'], 
+                                 capture_output=True, timeout=10)
+                    
+                    if os.path.exists(wav_path):
+                        # Play the converted WAV file
+                        pygame.mixer.init()
+                        pygame.mixer.music.load(wav_path)
+                        pygame.mixer.music.play()
+                        
+                        # Clean up both files after a delay
+                        def cleanup():
+                            import time
+                            time.sleep(5)  # Wait for audio to finish
+                            try:
+                                os.unlink(temp_file_path)
+                                os.unlink(wav_path)
+                            except:
+                                pass
+                        
+                        threading.Thread(target=cleanup, daemon=True).start()
+                        print(f"🔊 Voice: {message}")
+                        return
+                except:
+                    pass
                 
-                # Clean up temp file after a delay
+                # If conversion failed, fallback to WAV sound
+                print(f"⚠️ Could not convert MP3 to WAV, using fallback sound")
+                self.play_sound("alert")
+                
+                # Clean up temp file
                 def cleanup():
                     import time
-                    time.sleep(5)  # Wait for audio to finish
+                    time.sleep(5)
                     try:
                         os.unlink(temp_file_path)
                     except:
                         pass
                 
                 threading.Thread(target=cleanup, daemon=True).start()
-                
-                print(f"🔊 Voice: {message}")
             else:
                 print(f"❌ Failed to generate audio for: {message}")
+                self.play_sound("alert")
         except Exception as e:
             print(f"❌ Error speaking message: {e}")
+            self.play_sound("alert")
+    
+    def play_sound(self, sound_type):
+        """Play a WAV sound file."""
+        try:
+            sound_file = f"sounds/{sound_type}.wav"
+            if os.path.exists(sound_file):
+                pygame.mixer.init()
+                pygame.mixer.music.load(sound_file)
+                pygame.mixer.music.play()
+                print(f"🔊 Playing {sound_type} sound")
+            else:
+                print(f"⚠️ Sound file not found: {sound_file}")
+        except Exception as e:
+            print(f"❌ Error playing sound {sound_type}: {e}")
+    
+    def test_wav_sounds(self):
+        """Test all WAV sound files."""
+        print("🔊 Testing WAV sound files...")
+        sound_types = ["alert", "completion", "error", "snooze"]
+        
+        for sound_type in sound_types:
+            try:
+                sound_file = f"sounds/{sound_type}.wav"
+                if os.path.exists(sound_file):
+                    print(f"🎵 Testing {sound_type}.wav...")
+                    pygame.mixer.init()
+                    pygame.mixer.music.load(sound_file)
+                    pygame.mixer.music.play()
+                    time.sleep(2)  # Wait for sound to finish
+                    print(f"✅ {sound_type}.wav played successfully")
+                else:
+                    print(f"❌ {sound_file} not found")
+            except Exception as e:
+                print(f"❌ Error playing {sound_type}: {e}")
+        
+        print("🎵 WAV sound test completed!")
     
     def list_available_voices(self):
         """List available ElevenLabs voices."""
@@ -2524,6 +2591,10 @@ class PiSimulation:
                     elif event.key == pygame.K_F11:
                         # Toggle fullscreen mode
                         self.toggle_fullscreen()
+                    
+                    elif event.key == pygame.K_a:
+                        # Test WAV sounds
+                        self.test_wav_sounds()
                     
                     elif event.key == pygame.K_SPACE:
                         self.update_interaction_time()
