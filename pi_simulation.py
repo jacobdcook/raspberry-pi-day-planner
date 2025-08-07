@@ -124,7 +124,16 @@ class PiSimulation:
         self.task_box_height = max(80, self.height // 12)
         self.margin = max(20, self.width // 100)
         
-        self.screen = pygame.display.set_mode((self.width, self.height))
+        # Set up fullscreen display for Raspberry Pi
+        try:
+            # Try fullscreen first (for Pi)
+            self.screen = pygame.display.set_mode((self.width, self.height), pygame.FULLSCREEN)
+            print("✅ Fullscreen mode enabled")
+        except pygame.error:
+            # Fallback to windowed mode if fullscreen fails
+            self.screen = pygame.display.set_mode((self.width, self.height))
+            print("⚠️ Fullscreen failed, using windowed mode")
+        
         pygame.display.set_caption("Raspberry Pi Day Planner Simulation")
         
         # Get current theme colors
@@ -314,6 +323,23 @@ class PiSimulation:
         self.current_theme = "light" if self.current_theme == "dark" else "dark"
         self.colors = self.themes[self.current_theme]
         print(f"🎨 Switched to {self.current_theme} theme")
+    
+    def toggle_fullscreen(self):
+        """Toggle between fullscreen and windowed mode."""
+        try:
+            # Get current display flags
+            current_flags = self.screen.get_flags()
+            
+            if pygame.FULLSCREEN in current_flags:
+                # Switch to windowed mode
+                self.screen = pygame.display.set_mode((self.width, self.height))
+                print("🖥️ Switched to windowed mode")
+            else:
+                # Switch to fullscreen mode
+                self.screen = pygame.display.set_mode((self.width, self.height), pygame.FULLSCREEN)
+                print("🖥️ Switched to fullscreen mode")
+        except pygame.error as e:
+            print(f"⚠️ Failed to toggle fullscreen: {e}")
     
     def get_theme_color(self, color_name):
         """Get color from current theme."""
@@ -2494,6 +2520,10 @@ class PiSimulation:
                     
                     elif event.key == pygame.K_t:
                         self.toggle_theme()
+                    
+                    elif event.key == pygame.K_F11:
+                        # Toggle fullscreen mode
+                        self.toggle_fullscreen()
                     
                     elif event.key == pygame.K_SPACE:
                         self.update_interaction_time()
