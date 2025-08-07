@@ -386,15 +386,19 @@ class PiSimulation:
     
     def speak_message(self, message):
         """Speak a message using ElevenLabs voice."""
+        print(f"🎤 Attempting to speak: '{message}'")
+        
         if not self.voice_engine or not self.api_key:
-            # Fallback to WAV sound
+            print("⚠️ Voice engine or API key not available, using WAV fallback")
             self.play_sound("alert")
             return
         
         try:
             # Generate audio
+            print(f"🔧 Generating audio with voice: {self.voice_id}")
             audio = generate(text=message, voice=self.voice_id)
             if audio:
+                print(f"✅ Audio generated successfully ({len(audio)} bytes)")
                 # Save to temporary file
                 with tempfile.NamedTemporaryFile(delete=False, suffix=".mp3") as temp_file:
                     temp_file.write(audio)
@@ -403,12 +407,14 @@ class PiSimulation:
                 # Try to convert MP3 to WAV using ffmpeg if available
                 try:
                     import subprocess
+                    print("🔄 Attempting MP3 to WAV conversion with ffmpeg...")
                     wav_path = temp_file_path.replace('.mp3', '.wav')
-                    subprocess.run(['ffmpeg', '-i', temp_file_path, '-acodec', 'pcm_s16le', 
+                    result = subprocess.run(['ffmpeg', '-i', temp_file_path, '-acodec', 'pcm_s16le', 
                                   '-ar', '44100', '-ac', '2', wav_path, '-y'], 
                                  capture_output=True, timeout=10)
                     
-                    if os.path.exists(wav_path):
+                    if result.returncode == 0 and os.path.exists(wav_path):
+                        print(f"✅ MP3 to WAV conversion successful")
                         # Play the converted WAV file
                         pygame.mixer.init()
                         pygame.mixer.music.load(wav_path)
@@ -427,8 +433,10 @@ class PiSimulation:
                         threading.Thread(target=cleanup, daemon=True).start()
                         print(f"🔊 Voice: {message}")
                         return
-                except:
-                    pass
+                    else:
+                        print(f"❌ MP3 to WAV conversion failed: {result.stderr}")
+                except Exception as e:
+                    print(f"❌ ffmpeg conversion failed: {e}")
                 
                 # If conversion failed, fallback to WAV sound
                 print(f"⚠️ Could not convert MP3 to WAV, using fallback sound")
