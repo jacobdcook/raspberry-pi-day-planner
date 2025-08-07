@@ -50,7 +50,7 @@ class TaskScheduler:
         
         # Initialize APScheduler
         self.scheduler = BackgroundScheduler()
-        self.scheduler.add_jobstore('default', job_defaults={'coalesce': True})
+        # Don't add jobstore explicitly - let APScheduler handle it
         
         # Track scheduled jobs
         self.scheduled_jobs = {}
