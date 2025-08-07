@@ -4,9 +4,6 @@ pytz>=2023.3
 APScheduler>=3.10.1
 python-dateutil>=2.8.2
 
-# For Windows GUI and Pi display
-tkinter  # Usually included with Python
-
 # For Pi simulation and audio
 pygame>=2.5.0
 
@@ -21,9 +18,6 @@ pydantic>=1.8.0
 
 # For file watching
 watchdog>=2.1.0
-
-# For database operations
-sqlite3  # Usually included with Python
 
 # For logging and utilities
 colorama>=0.4.4 
