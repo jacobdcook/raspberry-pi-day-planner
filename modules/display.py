@@ -84,13 +84,16 @@ class DisplayManager:
     def start(self):
         """Start the display manager and create the main window."""
         try:
-            # Create main window in a separate thread
+            # Create main window
             self._create_main_window()
             
             # Start UI update thread
             self._start_ui_thread()
             
             self.logger.info("Display manager started")
+            
+            # Start the main event loop (this will block until window is closed)
+            self.root.mainloop()
             
         except Exception as e:
             self.logger.error(f"Failed to start display manager: {e}")
