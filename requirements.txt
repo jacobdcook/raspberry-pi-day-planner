@@ -20,4 +20,10 @@ pydantic>=1.8.0
 watchdog>=2.1.0
 
 # For logging and utilities
-colorama>=0.4.4 
+colorama>=0.4.4
+
+# For data analysis and system monitoring
+matplotlib>=3.5.0
+psutil>=5.8.0
+numpy>=1.21.0
+pandas>=1.3.0 
