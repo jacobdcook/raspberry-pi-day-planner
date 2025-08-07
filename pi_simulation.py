@@ -41,15 +41,39 @@ from task_timer import TaskTimer
 from adaptive_time import AdaptiveTimeManager
 from backlog_manager import BacklogManager
 try:
-    from elevenlabs import generate, set_api_key
-    ELEVENLABS_AVAILABLE = True
-except ImportError:
-    # Fallback if elevenlabs is not available
+    # Try different import methods for different versions
+    try:
+        from elevenlabs import generate, set_api_key
+        ELEVENLABS_AVAILABLE = True
+        print("✅ ElevenLabs imported (new API)")
+    except ImportError:
+        try:
+            from elevenlabs import generate
+            from elevenlabs import set_api_key
+            ELEVENLABS_AVAILABLE = True
+            print("✅ ElevenLabs imported (separate imports)")
+        except ImportError:
+            try:
+                from elevenlabs import Client
+                ELEVENLABS_AVAILABLE = True
+                generate = None
+                set_api_key = None
+                print("✅ ElevenLabs imported (Client API)")
+            except ImportError:
+                # Fallback if elevenlabs is not available
+                ELEVENLABS_AVAILABLE = False
+                def generate(*args, **kwargs):
+                    return None
+                def set_api_key(*args, **kwargs):
+                    pass
+                print("⚠️ ElevenLabs not available")
+except Exception as e:
     ELEVENLABS_AVAILABLE = False
     def generate(*args, **kwargs):
         return None
     def set_api_key(*args, **kwargs):
         pass
+    print(f"⚠️ ElevenLabs import failed: {e}")
 import threading
 import tempfile
 
@@ -396,7 +420,16 @@ class PiSimulation:
         try:
             # Generate audio
             print(f"🔧 Generating audio with voice: {self.voice_id}")
-            audio = generate(text=message, voice=self.voice_id)
+            
+            if generate and set_api_key:
+                # Use old API
+                audio = generate(text=message, voice=self.voice_id)
+            else:
+                # Use new Client API
+                from elevenlabs import Client
+                client = Client(api_key=self.api_key)
+                audio = client.generate(text=message, voice=self.voice_id)
+            
             if audio:
                 print(f"✅ Audio generated successfully ({len(audio)} bytes)")
                 # Save to temporary file

@@ -17,10 +17,27 @@ def test_elevenlabs():
         # Test 1: Check if elevenlabs module is available
         print("📡 Test 1: Checking ElevenLabs module...")
         try:
-            from elevenlabs import generate, set_api_key
-            print("✅ ElevenLabs module imported successfully")
-        except ImportError as e:
-            print(f"❌ ElevenLabs module not available: {e}")
+            # Try different import methods for different versions
+            try:
+                from elevenlabs import generate, set_api_key
+                print("✅ ElevenLabs module imported successfully (new API)")
+            except ImportError:
+                try:
+                    from elevenlabs import generate
+                    from elevenlabs import set_api_key
+                    print("✅ ElevenLabs module imported successfully (separate imports)")
+                except ImportError:
+                    try:
+                        from elevenlabs import Client
+                        print("✅ ElevenLabs module imported successfully (Client API)")
+                        # Use Client API instead
+                        generate = None
+                        set_api_key = None
+                    except ImportError as e:
+                        print(f"❌ ElevenLabs module not available: {e}")
+                        return False
+        except Exception as e:
+            print(f"❌ ElevenLabs import failed: {e}")
             return False
         
         # Test 2: Check if API key is available
@@ -34,22 +51,22 @@ def test_elevenlabs():
             api_key = "sk_f8bd094182fd27ab6d2ba6d1447a3346ea745159f422970d"  # Test key
             print("⚠️ Using test API key")
         
-        # Test 3: Set API key
-        print("\n🔧 Test 3: Setting API key...")
-        try:
-            set_api_key(api_key)
-            print("✅ API key set successfully")
-        except Exception as e:
-            print(f"❌ Failed to set API key: {e}")
-            return False
-        
-        # Test 4: Generate audio
-        print("\n🎵 Test 4: Generating audio...")
+        # Test 3: Set API key and generate audio
+        print("\n🎵 Test 3: Generating audio...")
         try:
             test_message = "Hello! This is a test of ElevenLabs voice synthesis."
             print(f"📝 Generating: '{test_message}'")
             
-            audio = generate(text=test_message, voice="21m00Tcm4TlvDq8ikWAM")  # Rachel voice
+            if generate and set_api_key:
+                # Use old API
+                set_api_key(api_key)
+                audio = generate(text=test_message, voice="21m00Tcm4TlvDq8ikWAM")  # Rachel voice
+            else:
+                # Use new Client API
+                from elevenlabs import Client
+                client = Client(api_key=api_key)
+                audio = client.generate(text=test_message, voice="21m00Tcm4TlvDq8ikWAM")
+            
             if audio:
                 print("✅ Audio generated successfully")
                 print(f"📊 Audio size: {len(audio)} bytes")
@@ -60,8 +77,8 @@ def test_elevenlabs():
             print(f"❌ Failed to generate audio: {e}")
             return False
         
-        # Test 5: Save and convert audio
-        print("\n💾 Test 5: Saving and converting audio...")
+        # Test 4: Save and convert audio
+        print("\n💾 Test 4: Saving and converting audio...")
         try:
             # Save MP3 file
             with tempfile.NamedTemporaryFile(delete=False, suffix=".mp3") as temp_file:
@@ -71,8 +88,8 @@ def test_elevenlabs():
             print(f"✅ MP3 saved to: {temp_file_path}")
             print(f"📊 File size: {os.path.getsize(temp_file_path)} bytes")
             
-            # Test 6: Check if ffmpeg is available
-            print("\n🔧 Test 6: Checking ffmpeg...")
+            # Test 5: Check if ffmpeg is available
+            print("\n🔧 Test 5: Checking ffmpeg...")
             try:
                 result = subprocess.run(['ffmpeg', '-version'], capture_output=True, text=True)
                 if result.returncode == 0:
@@ -90,8 +107,8 @@ def test_elevenlabs():
                         print("✅ MP3 to WAV conversion successful")
                         print(f"📊 WAV file size: {os.path.getsize(wav_path)} bytes")
                         
-                        # Test 7: Play the WAV file
-                        print("\n🔊 Test 7: Playing WAV file...")
+                        # Test 6: Play the WAV file
+                        print("\n🔊 Test 6: Playing WAV file...")
                         try:
                             import pygame
                             pygame.mixer.init()
