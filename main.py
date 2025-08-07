@@ -22,6 +22,7 @@ import os
 import signal
 import logging
 import argparse
+from datetime import datetime
 from pathlib import Path
 
 # Add the project root to Python path for module imports
@@ -290,7 +291,6 @@ class DayPlanner:
     
     def _create_catch_up_tasks(self, tasks):
         """Create consolidated catch-up tasks for missed time blocks."""
-        from datetime import datetime
         
         current_time = datetime.now()
         current_hour = current_time.hour
