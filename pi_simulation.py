@@ -157,8 +157,25 @@ class PiSimulation:
         self.popup_type = "info"
         self.popup_ok_rect = None
         self.exit_confirmation_active = False
+        
+        # Phase 6: Add Task functionality
+        self.new_task_title = ""
+        self.new_task_time = ""
+        self.new_task_notes = ""
+        self.new_task_date = datetime.now().strftime("%Y-%m-%d")  # Default to today
+        self.active_input_field = None  # "title", "time", "notes", "date", or None
         self.clock = pygame.time.Clock()
         self.show_mood_prompt = False
+        
+        # Enhanced Add Task UI components
+        self.show_time_picker = False
+        self.show_calendar = False
+        self.time_picker_hour = 12
+        self.time_picker_minute = 0
+        self.time_picker_am_pm = "AM"
+        self.calendar_year = datetime.now().year
+        self.calendar_month = datetime.now().month
+        self.calendar_selected_day = datetime.now().day
         self.current_mood = None
         self.mood_notes = ""
         self.tasks_per_page = 4
@@ -1044,7 +1061,14 @@ class PiSimulation:
                                                                 self.get_theme_color("text"), 0.775, button_y + button_spacing + 0.04, center=True)
         self.screen.blit(achievements_text, achievements_pos)
         
-        return start_rect, backlog_rect, skipped_rect, stats_rect, voice_rect, focus_rect, all_tasks_rect, achievements_rect
+        # NEW: Add Task button (Phase 6)
+        add_task_rect = self.responsive_rect(0.1, button_y + button_spacing * 2, 0.15, 0.08)
+        pygame.draw.rect(self.screen, self.get_theme_color("success"), add_task_rect)
+        add_task_text, add_task_pos = self.responsive_text("Add Task", self.font, 
+                                                          self.get_theme_color("text"), 0.175, button_y + button_spacing * 2 + 0.04, center=True)
+        self.screen.blit(add_task_text, add_task_pos)
+        
+        return start_rect, backlog_rect, skipped_rect, stats_rect, voice_rect, focus_rect, all_tasks_rect, achievements_rect, add_task_rect
 
     def draw_focus_mode_screen(self):
         """Draw the focus mode screen with Pomodoro timer."""
@@ -2463,6 +2487,93 @@ class PiSimulation:
                         self.update_interaction_time()
                         if self.current_view == "idle":
                             self.current_view = "stats"
+                    
+                    # Phase 6: Add Task keyboard input handling
+                    elif self.current_view == "add_task" and self.active_input_field:
+                        if event.key == pygame.K_RETURN:
+                            # Move to next field or submit
+                            if self.active_input_field == "title":
+                                self.active_input_field = "date"
+                            elif self.active_input_field == "date":
+                                self.active_input_field = "time"
+                            elif self.active_input_field == "time":
+                                self.active_input_field = "notes"
+                            elif self.active_input_field == "notes":
+                                # Submit the task
+                                if self.new_task_title and self.new_task_time and self.new_task_date:
+                                    # Create new task
+                                    new_task = {
+                                        'title': self.new_task_title,
+                                        'time': self.new_task_time,
+                                        'date': self.new_task_date,
+                                        'notes': self.new_task_notes,
+                                        'priority': 2,
+                                        'audio_alert': True,
+                                        'snooze_duration': 5,
+                                        'duration': 30,
+                                        'completed': False,
+                                        'skipped': False
+                                    }
+                                    
+                                    # Add to today's tasks
+                                    self.today_tasks.append(new_task)
+                                    
+                                    # Sort tasks by time
+                                    self.today_tasks.sort(key=lambda x: x.get('time', '23:59'))
+                                    
+                                    print(f"✅ Added new task: {self.new_task_title} at {self.new_task_time} on {self.new_task_date}")
+                                    
+                                    # Clear form and return to idle
+                                    self.new_task_title = ""
+                                    self.new_task_time = ""
+                                    self.new_task_date = datetime.now().strftime("%Y-%m-%d")
+                                    self.new_task_notes = ""
+                                    self.active_input_field = None
+                                    self.current_view = "idle"
+                                else:
+                                    # Show error popup
+                                    self.show_popup = True
+                                    self.popup_title = "Missing Information"
+                                    self.popup_message = "Please enter task title, time, and date."
+                                    self.popup_type = "info"
+                        
+                        elif event.key == pygame.K_TAB:
+                            # Move to next field
+                            if self.active_input_field == "title":
+                                self.active_input_field = "date"
+                            elif self.active_input_field == "date":
+                                self.active_input_field = "time"
+                            elif self.active_input_field == "time":
+                                self.active_input_field = "notes"
+                            elif self.active_input_field == "notes":
+                                self.active_input_field = "title"
+                        
+                        elif event.key == pygame.K_BACKSPACE:
+                            # Handle backspace
+                            if self.active_input_field == "title":
+                                self.new_task_title = self.new_task_title[:-1] if self.new_task_title else ""
+                            elif self.active_input_field == "date":
+                                # Date is handled by calendar picker, no backspace needed
+                                pass
+                            elif self.active_input_field == "time":
+                                self.new_task_time = self.new_task_time[:-1] if self.new_task_time else ""
+                            elif self.active_input_field == "notes":
+                                self.new_task_notes = self.new_task_notes[:-1] if self.new_task_notes else ""
+                        
+                        elif event.unicode.isprintable():
+                            # Handle printable characters
+                            if self.active_input_field == "title":
+                                if len(self.new_task_title) < 50:  # Limit title length
+                                    self.new_task_title += event.unicode
+                            elif self.active_input_field == "date":
+                                # Date is handled by calendar picker, no direct typing
+                                pass
+                            elif self.active_input_field == "time":
+                                if len(self.new_task_time) < 5:  # Limit time length (HH:MM)
+                                    self.new_task_time += event.unicode
+                            elif self.active_input_field == "notes":
+                                if len(self.new_task_notes) < 200:  # Limit notes length
+                                    self.new_task_notes += event.unicode
                 
                 elif event.type == pygame.MOUSEBUTTONDOWN:
                     self.update_interaction_time()
@@ -2489,7 +2600,7 @@ class PiSimulation:
                     # Handle different screens
                     if self.current_view == "idle":
                         # Get button rectangles from idle screen
-                        start_rect, backlog_rect, skipped_rect, stats_rect, voice_rect, focus_rect, all_tasks_rect, achievements_rect = self.draw_idle_screen()
+                        start_rect, backlog_rect, skipped_rect, stats_rect, voice_rect, focus_rect, all_tasks_rect, achievements_rect, add_task_rect = self.draw_idle_screen()
                         
                         if start_rect.collidepoint(mouse_pos):
                             next_task = self.get_next_task()
@@ -2539,6 +2650,15 @@ class PiSimulation:
                         
                         elif achievements_rect.collidepoint(mouse_pos):
                             self.current_view = "achievements"
+                        
+                        elif add_task_rect.collidepoint(mouse_pos):
+                            # Initialize add task screen
+                            self.new_task_title = ""
+                            self.new_task_time = ""
+                            self.new_task_notes = ""
+                            self.active_input_field = None
+                            self.current_view = "add_task"
+                            print("➕ Opening add task screen")
                     
                     elif self.current_view == "focus":
                         # Get button rectangles from focus screen
@@ -2566,6 +2686,173 @@ class PiSimulation:
                         
                         if back_rect.collidepoint(mouse_pos):
                             self.current_view = "idle"
+                    
+                    elif self.current_view == "add_task":
+                        # Get button rectangles from add task screen
+                        add_rect, cancel_rect = self.draw_add_task_screen()
+                        
+                        if add_rect.collidepoint(mouse_pos):
+                            # Add the new task
+                            if self.new_task_title and self.new_task_time and self.new_task_date:
+                                # Create new task
+                                new_task = {
+                                    'title': self.new_task_title,
+                                    'time': self.new_task_time,
+                                    'date': self.new_task_date,
+                                    'notes': self.new_task_notes,
+                                    'priority': 2,  # Default medium priority
+                                    'audio_alert': True,
+                                    'snooze_duration': 5,
+                                    'duration': 30,  # Default 30 minutes
+                                    'completed': False,
+                                    'skipped': False
+                                }
+                                
+                                # Add to today's tasks
+                                self.today_tasks.append(new_task)
+                                
+                                # Sort tasks by time
+                                self.today_tasks.sort(key=lambda x: x.get('time', '23:59'))
+                                
+                                print(f"✅ Added new task: {self.new_task_title} at {self.new_task_time} on {self.new_task_date}")
+                                
+                                # Clear form and return to idle
+                                self.new_task_title = ""
+                                self.new_task_time = ""
+                                self.new_task_date = datetime.now().strftime("%Y-%m-%d")
+                                self.new_task_notes = ""
+                                self.active_input_field = None
+                                self.current_view = "idle"
+                            else:
+                                # Show error popup
+                                self.show_popup = True
+                                self.popup_title = "Missing Information"
+                                self.popup_message = "Please enter task title, time, and date."
+                                self.popup_type = "info"
+                        
+                        elif cancel_rect.collidepoint(mouse_pos):
+                            # Cancel and return to idle
+                            self.new_task_title = ""
+                            self.new_task_time = ""
+                            self.new_task_date = datetime.now().strftime("%Y-%m-%d")
+                            self.new_task_notes = ""
+                            self.active_input_field = None
+                            self.current_view = "idle"
+                            print("❌ Cancelled adding task")
+                        
+                        # Handle input field clicks
+                        elif hasattr(self, 'title_input_rect') and self.title_input_rect.collidepoint(mouse_pos):
+                            self.active_input_field = "title"
+                            print("📝 Focus on title input")
+                        
+                        elif hasattr(self, 'date_input_rect') and self.date_input_rect.collidepoint(mouse_pos):
+                            # Open calendar picker
+                            self.show_calendar = True
+                            self.active_input_field = "date"
+                            print("📅 Opening calendar picker")
+                        
+                        elif hasattr(self, 'time_input_rect') and self.time_input_rect.collidepoint(mouse_pos):
+                            # Open time picker
+                            self.show_time_picker = True
+                            self.active_input_field = "time"
+                            # Initialize time picker with current time
+                            current_time = datetime.now()
+                            self.time_picker_hour = current_time.hour
+                            self.time_picker_minute = current_time.minute
+                            if self.time_picker_hour > 12:
+                                self.time_picker_hour -= 12
+                                self.time_picker_am_pm = "PM"
+                            else:
+                                self.time_picker_am_pm = "AM"
+                            if self.time_picker_hour == 0:
+                                self.time_picker_hour = 12
+                            print("⏰ Opening time picker")
+                        
+                        elif hasattr(self, 'notes_input_rect') and self.notes_input_rect.collidepoint(mouse_pos):
+                            self.active_input_field = "notes"
+                            print("📝 Focus on notes input")
+                    
+                    # Handle time picker clicks
+                    elif self.show_time_picker:
+                        if hasattr(self, 'time_picker_rects'):
+                            if self.time_picker_rects['hour_up'].collidepoint(mouse_pos):
+                                self.time_picker_hour = (self.time_picker_hour % 12) + 1
+                                if self.time_picker_hour == 13:
+                                    self.time_picker_hour = 1
+                                print(f"⏰ Hour up: {self.time_picker_hour}")
+                            
+                            elif self.time_picker_rects['hour_down'].collidepoint(mouse_pos):
+                                self.time_picker_hour = (self.time_picker_hour - 2) % 12 + 1
+                                print(f"⏰ Hour down: {self.time_picker_hour}")
+                            
+                            elif self.time_picker_rects['minute_up'].collidepoint(mouse_pos):
+                                self.time_picker_minute = (self.time_picker_minute + 5) % 60
+                                print(f"⏰ Minute up: {self.time_picker_minute}")
+                            
+                            elif self.time_picker_rects['minute_down'].collidepoint(mouse_pos):
+                                self.time_picker_minute = (self.time_picker_minute - 5) % 60
+                                print(f"⏰ Minute down: {self.time_picker_minute}")
+                            
+                            elif self.time_picker_rects['ampm'].collidepoint(mouse_pos):
+                                self.time_picker_am_pm = "PM" if self.time_picker_am_pm == "AM" else "AM"
+                                print(f"⏰ AM/PM toggle: {self.time_picker_am_pm}")
+                            
+                            elif self.time_picker_rects['ok'].collidepoint(mouse_pos):
+                                # Convert to 24-hour format and set time
+                                hour_24 = self.time_picker_hour
+                                if self.time_picker_am_pm == "PM" and hour_24 != 12:
+                                    hour_24 += 12
+                                elif self.time_picker_am_pm == "AM" and hour_24 == 12:
+                                    hour_24 = 0
+                                
+                                self.new_task_time = f"{hour_24:02d}:{self.time_picker_minute:02d}"
+                                self.show_time_picker = False
+                                self.active_input_field = None
+                                print(f"✅ Time selected: {self.new_task_time}")
+                            
+                            elif self.time_picker_rects['cancel'].collidepoint(mouse_pos):
+                                self.show_time_picker = False
+                                self.active_input_field = None
+                                print("❌ Time picker cancelled")
+                    
+                    # Handle calendar clicks
+                    elif self.show_calendar:
+                        if hasattr(self, 'calendar_rects'):
+                            if self.calendar_rects['prev'].collidepoint(mouse_pos):
+                                # Previous month
+                                self.calendar_month -= 1
+                                if self.calendar_month < 1:
+                                    self.calendar_month = 12
+                                    self.calendar_year -= 1
+                                print(f"📅 Previous month: {self.calendar_month}/{self.calendar_year}")
+                            
+                            elif self.calendar_rects['next'].collidepoint(mouse_pos):
+                                # Next month
+                                self.calendar_month += 1
+                                if self.calendar_month > 12:
+                                    self.calendar_month = 1
+                                    self.calendar_year += 1
+                                print(f"📅 Next month: {self.calendar_month}/{self.calendar_year}")
+                            
+                            elif self.calendar_rects['ok'].collidepoint(mouse_pos):
+                                # Set selected date
+                                self.new_task_date = f"{self.calendar_year:04d}-{self.calendar_month:02d}-{self.calendar_selected_day:02d}"
+                                self.show_calendar = False
+                                self.active_input_field = None
+                                print(f"✅ Date selected: {self.new_task_date}")
+                            
+                            elif self.calendar_rects['cancel'].collidepoint(mouse_pos):
+                                self.show_calendar = False
+                                self.active_input_field = None
+                                print("❌ Calendar cancelled")
+                            
+                            else:
+                                # Check for day clicks
+                                for day, rect in self.calendar_rects['days'].items():
+                                    if rect.collidepoint(mouse_pos):
+                                        self.calendar_selected_day = day
+                                        print(f"📅 Day selected: {day}")
+                                        break
                     
                     elif self.current_view == "task":
                         # Handle task completion/skip
@@ -2766,6 +3053,16 @@ class PiSimulation:
                 self.draw_skipped_tasks_screen()
             elif self.current_view == "all_tasks":
                 self.draw_all_tasks_screen()
+            elif self.current_view == "add_task":
+                self.draw_add_task_screen()
+            
+            # Draw time picker if active
+            if self.show_time_picker:
+                self.draw_time_picker()
+            
+            # Draw calendar if active
+            if self.show_calendar:
+                self.draw_calendar()
             
             # Draw popup if active
             if self.show_popup:
@@ -3061,39 +3358,439 @@ class PiSimulation:
         return self.emoji_analytics.get(emoji, "Unknown Badge")
 
     def draw_badges_screen(self):
-        """Draw the badges/achievements screen."""
+        """Draw the achievements/badges screen."""
+        # Clear screen
         self.screen.fill(self.get_theme_color("background"))
         
         # Title
-        title_text, title_pos = self.responsive_text("Your Achievements", self.large_font, 
-                                                   self.get_theme_color("text"), 0.5, 0.1, center=True)
-        self.screen.blit(title_text, title_pos)
+        title_text = "Achievements"
+        title_surface, title_pos = self.responsive_text(title_text, self.large_font, 
+                                                      self.get_theme_color("text"), 0.5, 0.1, center=True)
+        self.screen.blit(title_surface, title_pos)
         
-        # Draw earned badges - moved way up to be above back button
+        # Earned badges
+        earned_badges = [
+            ("🏆", "Champion", "Complete 7 days in a row"),
+            ("💎", "Diamond Focus", "Complete 30 tasks without skipping"),
+            ("⚡", "Speed Demon", "Complete 5 tasks in one day"),
+            ("🎯", "Precision Master", "Complete all tasks for 3 consecutive days")
+        ]
+        
         y_offset = 0.15
-        for i, badge in enumerate(self.earned_badges):
-            badge_text, badge_pos = self.responsive_text(f"{self.get_badge_description(badge)}", 
-                                                       self.font, self.get_theme_color("accent"), 
-                                                       0.5, y_offset + (i * 0.08), center=True)
-            self.screen.blit(badge_text, badge_pos)
+        for emoji, title, description in earned_badges:
+            # Badge emoji and title
+            badge_text = f"{emoji} {title}"
+            badge_surface, badge_pos = self.responsive_text(badge_text, self.font, 
+                                                          self.get_theme_color("success"), 0.3, y_offset, center=True)
+            self.screen.blit(badge_surface, badge_pos)
+            
+            # Description
+            desc_surface, desc_pos = self.responsive_text(description, self.small_font, 
+                                                        self.get_theme_color("text"), 0.3, y_offset + 0.04, center=True)
+            self.screen.blit(desc_surface, desc_pos)
+            
+            y_offset += 0.12
         
-        # Draw available badges (grayed out) - moved way up to avoid overlap
-        y_offset = 0.35
-        for i, (emoji, description) in enumerate(self.emoji_analytics.items()):
-            if emoji not in self.earned_badges:
-                badge_text, badge_pos = self.responsive_text(f"{description}", 
-                                                           self.font, self.get_theme_color("border"), 
-                                                           0.5, y_offset + (i * 0.08), center=True)
-                self.screen.blit(badge_text, badge_pos)
+        # Available badges
+        available_badges = [
+            ("🌟", "Rising Star", "Complete your first task"),
+            ("🔥", "On Fire", "Complete 10 tasks in a row"),
+            ("🏅", "Gold Medal", "Complete all tasks for a week"),
+            ("🚀", "Rocket", "Complete 50 total tasks")
+        ]
         
-        # Back button (moved down to avoid overlap)
+        y_offset = 0.45
+        for emoji, title, description in available_badges:
+            # Badge emoji and title
+            badge_text = f"{emoji} {title}"
+            badge_surface, badge_pos = self.responsive_text(badge_text, self.font, 
+                                                          self.get_theme_color("border"), 0.7, y_offset, center=True)
+            self.screen.blit(badge_surface, badge_pos)
+            
+            # Description
+            desc_surface, desc_pos = self.responsive_text(description, self.small_font, 
+                                                        self.get_theme_color("text"), 0.7, y_offset + 0.04, center=True)
+            self.screen.blit(desc_surface, desc_pos)
+            
+            y_offset += 0.12
+        
+        # Back button
         back_rect = self.responsive_rect(0.4, 0.85, 0.2, 0.08)
         pygame.draw.rect(self.screen, self.get_theme_color("button"), back_rect)
         back_text, back_pos = self.responsive_text("Back", self.font, 
-                                                 self.get_theme_color("text"), 0.5, 0.89, center=True)
+                                                  self.get_theme_color("text"), 0.5, 0.89, center=True)
         self.screen.blit(back_text, back_pos)
         
         return back_rect
+
+    def draw_add_task_screen(self):
+        """Draw the add task screen (Phase 6)."""
+        # Clear screen
+        self.screen.fill(self.get_theme_color("background"))
+        
+        # Title
+        title_text = "Add New Task"
+        title_surface, title_pos = self.responsive_text(title_text, self.large_font, 
+                                                      self.get_theme_color("text"), 0.5, 0.1, center=True)
+        self.screen.blit(title_surface, title_pos)
+        
+        # Task title input
+        title_label_text = "Task Title:"
+        title_label_surface, title_label_pos = self.responsive_text(title_label_text, self.font, 
+                                                                  self.get_theme_color("text"), 0.2, 0.25, center=True)
+        self.screen.blit(title_label_surface, title_label_pos)
+        
+        # Title input box
+        title_input_rect = self.responsive_rect(0.25, 0.3, 0.5, 0.06)
+        pygame.draw.rect(self.screen, self.get_theme_color("button"), title_input_rect)
+        pygame.draw.rect(self.screen, self.get_theme_color("border"), title_input_rect, 2)
+        
+        # Display current title input
+        if hasattr(self, 'new_task_title'):
+            title_surface, title_pos = self.responsive_text(self.new_task_title, self.font, 
+                                                          self.get_theme_color("text"), 0.5, 0.33, center=True)
+            self.screen.blit(title_surface, title_pos)
+        
+        # Date input
+        date_label_text = "Date:"
+        date_label_surface, date_label_pos = self.responsive_text(date_label_text, self.font, 
+                                                                 self.get_theme_color("text"), 0.2, 0.45, center=True)
+        self.screen.blit(date_label_surface, date_label_pos)
+        
+        # Date input box (clickable)
+        date_input_rect = self.responsive_rect(0.25, 0.5, 0.5, 0.06)
+        pygame.draw.rect(self.screen, self.get_theme_color("accent"), date_input_rect)
+        pygame.draw.rect(self.screen, self.get_theme_color("border"), date_input_rect, 2)
+        
+        # Display current date input
+        if hasattr(self, 'new_task_date'):
+            # Format date for display
+            try:
+                date_obj = datetime.strptime(self.new_task_date, "%Y-%m-%d")
+                display_date = date_obj.strftime("%B %d, %Y")
+            except:
+                display_date = self.new_task_date
+            date_surface, date_pos = self.responsive_text(display_date, self.font, 
+                                                        self.get_theme_color("text"), 0.5, 0.53, center=True)
+            self.screen.blit(date_surface, date_pos)
+        
+        # Time input
+        time_label_text = "Time:"
+        time_label_surface, time_label_pos = self.responsive_text(time_label_text, self.font, 
+                                                                self.get_theme_color("text"), 0.2, 0.6, center=True)
+        self.screen.blit(time_label_surface, time_label_pos)
+        
+        # Time input box (clickable)
+        time_input_rect = self.responsive_rect(0.25, 0.65, 0.5, 0.06)
+        pygame.draw.rect(self.screen, self.get_theme_color("accent"), time_input_rect)
+        pygame.draw.rect(self.screen, self.get_theme_color("border"), time_input_rect, 2)
+        
+        # Display current time input
+        if hasattr(self, 'new_task_time'):
+            time_surface, time_pos = self.responsive_text(self.new_task_time, self.font, 
+                                                        self.get_theme_color("text"), 0.5, 0.68, center=True)
+            self.screen.blit(time_surface, time_pos)
+        
+        # Notes input
+        notes_label_text = "Notes (optional):"
+        notes_label_surface, notes_label_pos = self.responsive_text(notes_label_text, self.font, 
+                                                                  self.get_theme_color("text"), 0.2, 0.75, center=True)
+        self.screen.blit(notes_label_surface, notes_label_pos)
+        
+        # Notes input box
+        notes_input_rect = self.responsive_rect(0.25, 0.8, 0.5, 0.08)
+        pygame.draw.rect(self.screen, self.get_theme_color("button"), notes_input_rect)
+        pygame.draw.rect(self.screen, self.get_theme_color("border"), notes_input_rect, 2)
+        
+        # Display current notes input
+        if hasattr(self, 'new_task_notes'):
+            notes_surface, notes_pos = self.responsive_text(self.new_task_notes, self.small_font, 
+                                                          self.get_theme_color("text"), 0.5, 0.84, center=True)
+            self.screen.blit(notes_surface, notes_pos)
+        
+        # Buttons
+        # Add Task button
+        add_rect = self.responsive_rect(0.25, 0.92, 0.2, 0.06)
+        pygame.draw.rect(self.screen, self.get_theme_color("success"), add_rect)
+        add_text, add_pos = self.responsive_text("Add Task", self.font, 
+                                                self.get_theme_color("text"), 0.35, 0.95, center=True)
+        self.screen.blit(add_text, add_pos)
+        
+        # Cancel button
+        cancel_rect = self.responsive_rect(0.55, 0.92, 0.2, 0.06)
+        pygame.draw.rect(self.screen, self.get_theme_color("error"), cancel_rect)
+        cancel_text, cancel_pos = self.responsive_text("Cancel", self.font, 
+                                                     self.get_theme_color("text"), 0.65, 0.95, center=True)
+        self.screen.blit(cancel_text, cancel_pos)
+        
+        # Store input rectangles for click detection
+        self.title_input_rect = title_input_rect
+        self.date_input_rect = date_input_rect
+        self.time_input_rect = time_input_rect
+        self.notes_input_rect = notes_input_rect
+        
+        return add_rect, cancel_rect
+
+    def draw_time_picker(self):
+        """Draw a clickable clock interface for time selection."""
+        # Semi-transparent overlay
+        overlay = pygame.Surface((self.width, self.height))
+        overlay.set_alpha(128)
+        overlay.fill(self.get_theme_color("background"))
+        self.screen.blit(overlay, (0, 0))
+        
+        # Time picker container
+        picker_rect = self.responsive_rect(0.2, 0.2, 0.6, 0.6)
+        pygame.draw.rect(self.screen, self.get_theme_color("button"), picker_rect)
+        pygame.draw.rect(self.screen, self.get_theme_color("border"), picker_rect, 3)
+        
+        # Title
+        title_text = "Select Time"
+        title_surface, title_pos = self.responsive_text(title_text, self.large_font, 
+                                                      self.get_theme_color("text"), 0.5, 0.25, center=True)
+        self.screen.blit(title_surface, title_pos)
+        
+        # Clock face
+        clock_center_x = int(self.width * 0.5)
+        clock_center_y = int(self.height * 0.45)
+        clock_radius = min(self.width, self.height) // 8
+        
+        # Draw clock face
+        pygame.draw.circle(self.screen, self.get_theme_color("border"), 
+                          (clock_center_x, clock_center_y), clock_radius, 2)
+        pygame.draw.circle(self.screen, self.get_theme_color("background"), 
+                          (clock_center_x, clock_center_y), clock_radius - 2)
+        
+        # Draw hour markers
+        for hour in range(1, 13):
+            angle = (hour - 3) * 30  # Start at 3 o'clock (90 degrees)
+            angle_rad = math.radians(angle)
+            marker_x = clock_center_x + int((clock_radius - 20) * math.cos(angle_rad))
+            marker_y = clock_center_y + int((clock_radius - 20) * math.sin(angle_rad))
+            
+            # Draw hour marker
+            pygame.draw.circle(self.screen, self.get_theme_color("text"), 
+                              (marker_x, marker_y), 3)
+            
+            # Draw hour number
+            hour_text = str(hour)
+            hour_surface = self.font.render(hour_text, True, self.get_theme_color("text"))
+            hour_pos = (marker_x - hour_surface.get_width() // 2, 
+                       marker_y - hour_surface.get_height() // 2)
+            self.screen.blit(hour_surface, hour_pos)
+        
+        # Draw current time hands
+        current_hour = self.time_picker_hour
+        if current_hour > 12:
+            current_hour -= 12
+        if current_hour == 0:
+            current_hour = 12
+            
+        # Hour hand
+        hour_angle = (current_hour - 3) * 30 + (self.time_picker_minute / 60) * 30
+        hour_angle_rad = math.radians(hour_angle)
+        hour_hand_x = clock_center_x + int((clock_radius - 40) * 0.6 * math.cos(hour_angle_rad))
+        hour_hand_y = clock_center_y + int((clock_radius - 40) * 0.6 * math.sin(hour_angle_rad))
+        pygame.draw.line(self.screen, self.get_theme_color("text"), 
+                        (clock_center_x, clock_center_y), (hour_hand_x, hour_hand_y), 4)
+        
+        # Minute hand
+        minute_angle = (self.time_picker_minute - 15) * 6  # 15 minutes = 90 degrees
+        minute_angle_rad = math.radians(minute_angle)
+        minute_hand_x = clock_center_x + int((clock_radius - 20) * 0.8 * math.cos(minute_angle_rad))
+        minute_hand_y = clock_center_y + int((clock_radius - 20) * 0.8 * math.sin(minute_angle_rad))
+        pygame.draw.line(self.screen, self.get_theme_color("accent"), 
+                        (clock_center_x, clock_center_y), (minute_hand_x, minute_hand_y), 2)
+        
+        # Center dot
+        pygame.draw.circle(self.screen, self.get_theme_color("text"), 
+                          (clock_center_x, clock_center_y), 5)
+        
+        # Time display
+        time_display = f"{self.time_picker_hour:02d}:{self.time_picker_minute:02d} {self.time_picker_am_pm}"
+        time_surface, time_pos = self.responsive_text(time_display, self.large_font, 
+                                                    self.get_theme_color("text"), 0.5, 0.6, center=True)
+        self.screen.blit(time_surface, time_pos)
+        
+        # Control buttons
+        # Hour up/down
+        hour_up_rect = self.responsive_rect(0.35, 0.7, 0.08, 0.05)
+        hour_down_rect = self.responsive_rect(0.35, 0.76, 0.08, 0.05)
+        
+        pygame.draw.rect(self.screen, self.get_theme_color("button"), hour_up_rect)
+        pygame.draw.rect(self.screen, self.get_theme_color("border"), hour_up_rect, 2)
+        hour_up_text, hour_up_pos = self.responsive_text("▲", self.font, 
+                                                        self.get_theme_color("text"), 0.39, 0.725, center=True)
+        self.screen.blit(hour_up_text, hour_up_pos)
+        
+        pygame.draw.rect(self.screen, self.get_theme_color("button"), hour_down_rect)
+        pygame.draw.rect(self.screen, self.get_theme_color("border"), hour_down_rect, 2)
+        hour_down_text, hour_down_pos = self.responsive_text("▼", self.font, 
+                                                            self.get_theme_color("text"), 0.39, 0.785, center=True)
+        self.screen.blit(hour_down_text, hour_down_pos)
+        
+        # Minute up/down
+        minute_up_rect = self.responsive_rect(0.57, 0.7, 0.08, 0.05)
+        minute_down_rect = self.responsive_rect(0.57, 0.76, 0.08, 0.05)
+        
+        pygame.draw.rect(self.screen, self.get_theme_color("button"), minute_up_rect)
+        pygame.draw.rect(self.screen, self.get_theme_color("border"), minute_up_rect, 2)
+        minute_up_text, minute_up_pos = self.responsive_text("▲", self.font, 
+                                                            self.get_theme_color("text"), 0.61, 0.725, center=True)
+        self.screen.blit(minute_up_text, minute_up_pos)
+        
+        pygame.draw.rect(self.screen, self.get_theme_color("button"), minute_down_rect)
+        pygame.draw.rect(self.screen, self.get_theme_color("border"), minute_down_rect, 2)
+        minute_down_text, minute_down_pos = self.responsive_text("▼", self.font, 
+                                                                self.get_theme_color("text"), 0.61, 0.785, center=True)
+        self.screen.blit(minute_down_text, minute_down_pos)
+        
+        # AM/PM toggle
+        ampm_rect = self.responsive_rect(0.45, 0.7, 0.1, 0.05)
+        pygame.draw.rect(self.screen, self.get_theme_color("accent"), ampm_rect)
+        pygame.draw.rect(self.screen, self.get_theme_color("border"), ampm_rect, 2)
+        ampm_text, ampm_pos = self.responsive_text(self.time_picker_am_pm, self.font, 
+                                                   self.get_theme_color("text"), 0.5, 0.725, center=True)
+        self.screen.blit(ampm_text, ampm_pos)
+        
+        # OK and Cancel buttons
+        ok_rect = self.responsive_rect(0.35, 0.85, 0.1, 0.06)
+        cancel_rect = self.responsive_rect(0.55, 0.85, 0.1, 0.06)
+        
+        pygame.draw.rect(self.screen, self.get_theme_color("success"), ok_rect)
+        pygame.draw.rect(self.screen, self.get_theme_color("border"), ok_rect, 2)
+        ok_text, ok_pos = self.responsive_text("OK", self.font, 
+                                              self.get_theme_color("text"), 0.4, 0.88, center=True)
+        self.screen.blit(ok_text, ok_pos)
+        
+        pygame.draw.rect(self.screen, self.get_theme_color("error"), cancel_rect)
+        pygame.draw.rect(self.screen, self.get_theme_color("border"), cancel_rect, 2)
+        cancel_text, cancel_pos = self.responsive_text("Cancel", self.font, 
+                                                      self.get_theme_color("text"), 0.6, 0.88, center=True)
+        self.screen.blit(cancel_text, cancel_pos)
+        
+        # Store rectangles for click detection
+        self.time_picker_rects = {
+            'hour_up': hour_up_rect,
+            'hour_down': hour_down_rect,
+            'minute_up': minute_up_rect,
+            'minute_down': minute_down_rect,
+            'ampm': ampm_rect,
+            'ok': ok_rect,
+            'cancel': cancel_rect
+        }
+
+    def draw_calendar(self):
+        """Draw a calendar popup for date selection."""
+        # Semi-transparent overlay
+        overlay = pygame.Surface((self.width, self.height))
+        overlay.set_alpha(128)
+        overlay.fill(self.get_theme_color("background"))
+        self.screen.blit(overlay, (0, 0))
+        
+        # Calendar container
+        calendar_rect = self.responsive_rect(0.15, 0.15, 0.7, 0.7)
+        pygame.draw.rect(self.screen, self.get_theme_color("button"), calendar_rect)
+        pygame.draw.rect(self.screen, self.get_theme_color("border"), calendar_rect, 3)
+        
+        # Title with month/year
+        month_names = ["January", "February", "March", "April", "May", "June",
+                      "July", "August", "September", "October", "November", "December"]
+        title_text = f"{month_names[self.calendar_month - 1]} {self.calendar_year}"
+        title_surface, title_pos = self.responsive_text(title_text, self.large_font, 
+                                                      self.get_theme_color("text"), 0.5, 0.2, center=True)
+        self.screen.blit(title_surface, title_pos)
+        
+        # Navigation buttons
+        prev_rect = self.responsive_rect(0.2, 0.2, 0.08, 0.05)
+        next_rect = self.responsive_rect(0.72, 0.2, 0.08, 0.05)
+        
+        pygame.draw.rect(self.screen, self.get_theme_color("button"), prev_rect)
+        pygame.draw.rect(self.screen, self.get_theme_color("border"), prev_rect, 2)
+        prev_text, prev_pos = self.responsive_text("◀", self.font, 
+                                                  self.get_theme_color("text"), 0.24, 0.225, center=True)
+        self.screen.blit(prev_text, prev_pos)
+        
+        pygame.draw.rect(self.screen, self.get_theme_color("button"), next_rect)
+        pygame.draw.rect(self.screen, self.get_theme_color("border"), next_rect, 2)
+        next_text, next_pos = self.responsive_text("▶", self.font, 
+                                                  self.get_theme_color("text"), 0.76, 0.225, center=True)
+        self.screen.blit(next_text, next_pos)
+        
+        # Day headers
+        day_headers = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"]
+        for i, day in enumerate(day_headers):
+            x_ratio = 0.2 + (i * 0.085)
+            header_surface, header_pos = self.responsive_text(day, self.small_font, 
+                                                            self.get_theme_color("text"), x_ratio, 0.3, center=True)
+            self.screen.blit(header_surface, header_pos)
+        
+        # Calculate calendar grid
+        first_day = datetime(self.calendar_year, self.calendar_month, 1)
+        first_weekday = first_day.weekday()
+        if first_weekday == 6:  # Sunday
+            first_weekday = 0
+        else:
+            first_weekday += 1
+            
+        days_in_month = (datetime(self.calendar_year, self.calendar_month + 1, 1) - 
+                        timedelta(days=1)).day
+        
+        # Draw calendar days
+        day_rects = {}
+        day = 1
+        for week in range(6):
+            for weekday in range(7):
+                if week == 0 and weekday < first_weekday:
+                    continue
+                if day > days_in_month:
+                    break
+                    
+                x_ratio = 0.2 + (weekday * 0.085)
+                y_ratio = 0.35 + (week * 0.08)
+                
+                # Day rectangle
+                day_rect = self.responsive_rect(x_ratio - 0.035, y_ratio - 0.025, 0.07, 0.06)
+                
+                # Highlight selected day
+                if day == self.calendar_selected_day:
+                    pygame.draw.rect(self.screen, self.get_theme_color("accent"), day_rect)
+                else:
+                    pygame.draw.rect(self.screen, self.get_theme_color("background"), day_rect)
+                pygame.draw.rect(self.screen, self.get_theme_color("border"), day_rect, 1)
+                
+                # Day number
+                day_surface, day_pos = self.responsive_text(str(day), self.font, 
+                                                          self.get_theme_color("text"), x_ratio, y_ratio, center=True)
+                self.screen.blit(day_surface, day_pos)
+                
+                day_rects[day] = day_rect
+                day += 1
+        
+        # OK and Cancel buttons
+        ok_rect = self.responsive_rect(0.35, 0.85, 0.1, 0.06)
+        cancel_rect = self.responsive_rect(0.55, 0.85, 0.1, 0.06)
+        
+        pygame.draw.rect(self.screen, self.get_theme_color("success"), ok_rect)
+        pygame.draw.rect(self.screen, self.get_theme_color("border"), ok_rect, 2)
+        ok_text, ok_pos = self.responsive_text("OK", self.font, 
+                                              self.get_theme_color("text"), 0.4, 0.88, center=True)
+        self.screen.blit(ok_text, ok_pos)
+        
+        pygame.draw.rect(self.screen, self.get_theme_color("error"), cancel_rect)
+        pygame.draw.rect(self.screen, self.get_theme_color("border"), cancel_rect, 2)
+        cancel_text, cancel_pos = self.responsive_text("Cancel", self.font, 
+                                                      self.get_theme_color("text"), 0.6, 0.88, center=True)
+        self.screen.blit(cancel_text, cancel_pos)
+        
+        # Store rectangles for click detection
+        self.calendar_rects = {
+            'prev': prev_rect,
+            'next': next_rect,
+            'ok': ok_rect,
+            'cancel': cancel_rect,
+            'days': day_rects
+        }
 
     def draw_task_screen(self):
         """Draw the task screen with completion options and timer."""

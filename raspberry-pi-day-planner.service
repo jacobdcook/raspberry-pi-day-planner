@@ -10,7 +10,7 @@ Group=pi
 WorkingDirectory=/home/pi/raspberry-pi-day-planner
 Environment=DISPLAY=:0
 Environment=XAUTHORITY=/home/pi/.Xauthority
-ExecStart=/usr/bin/python3 /home/pi/raspberry-pi-day-planner/main.py
+ExecStart=/usr/bin/python3 /home/pi/raspberry-pi-day-planner/pi_startup.py
 Restart=always
 RestartSec=10
 StandardOutput=journal

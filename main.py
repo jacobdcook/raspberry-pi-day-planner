@@ -39,6 +39,7 @@ from modules.web_api import WebAPI
 from modules.analytics import Analytics
 from modules.monitor import SystemMonitor
 from modules.peptide_scheduler import PeptideScheduler
+from modules.pi_detection import pi_detector
 
 
 class DayPlanner:
@@ -61,6 +62,12 @@ class DayPlanner:
         """Initialize the day planner application and all its components."""
         self.logger = logging.getLogger(__name__)
         self.logger.info("Initializing Raspberry Pi Day Planner...")
+        
+        # Detect and configure for Pi hardware
+        self.pi_detector = pi_detector
+        self.logger.info(f"Hardware detected: {'Pi' if self.pi_detector.is_raspberry_pi() else 'Simulation'}")
+        if self.pi_detector.is_raspberry_pi():
+            self.pi_detector.optimize_for_pi()
         
         # Parse command line arguments
         self.args = args or self._parse_arguments()
@@ -149,13 +156,14 @@ class DayPlanner:
             self._load_today_tasks()
             
             # Initialize audio manager
-            self.audio_manager = AudioManager()
+            self.audio_manager = AudioManager(pi_detector=self.pi_detector)
             self.logger.info("Audio manager initialized")
             
             # Initialize display manager
             self.display_manager = DisplayManager(
                 audio_manager=self.audio_manager,
-                event_logger=self.event_logger
+                event_logger=self.event_logger,
+                pi_detector=self.pi_detector
             )
             self.logger.info("Display manager initialized")
             

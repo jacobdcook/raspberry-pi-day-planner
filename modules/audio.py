@@ -27,15 +27,17 @@ class AudioManager:
     - Error handling for missing audio files
     """
     
-    def __init__(self, sounds_dir: Optional[str] = None):
+    def __init__(self, sounds_dir: Optional[str] = None, pi_detector=None):
         """
         Initialize the audio manager.
         
         Args:
             sounds_dir: Directory containing sound files.
                        Defaults to 'sounds' relative to project root.
+            pi_detector: Pi detector instance for hardware-specific settings.
         """
         self.logger = logging.getLogger(__name__)
+        self.pi_detector = pi_detector
         
         # Set sounds directory
         if sounds_dir is None:
@@ -44,10 +46,22 @@ class AudioManager:
         
         self.sounds_dir = Path(sounds_dir)
         
+        # Get hardware-specific audio settings
+        if self.pi_detector and self.pi_detector.is_raspberry_pi():
+            pi_config = self.pi_detector.get_audio_config()
+            self.volume = pi_config.get('volume', 0.8)
+            self.sample_rate = pi_config.get('sample_rate', 44100)
+            self.channels = pi_config.get('channels', 2)
+            self.buffer_size = pi_config.get('buffer_size', 1024)
+        else:
+            self.volume = 0.7
+            self.sample_rate = 44100
+            self.channels = 2
+            self.buffer_size = 512
+        
         # Initialize pygame mixer
         self.mixer_initialized = False
         self.sounds = {}
-        self.volume = 0.7
         
         # Default sound file names
         self.default_sounds = {
@@ -60,15 +74,20 @@ class AudioManager:
         self._initialize_mixer()
         self._load_sounds()
         
-        self.logger.info("Audio manager initialized")
+        self.logger.info(f"Audio manager initialized for {'Pi' if self.pi_detector and self.pi_detector.is_raspberry_pi() else 'simulation'}")
     
     def _initialize_mixer(self):
         """Initialize pygame mixer."""
         try:
-            # Initialize pygame mixer
-            pygame.mixer.init(frequency=44100, size=-16, channels=2, buffer=512)
+            # Initialize pygame mixer with hardware-specific settings
+            pygame.mixer.init(
+                frequency=self.sample_rate,
+                size=-16,
+                channels=self.channels,
+                buffer=self.buffer_size
+            )
             self.mixer_initialized = True
-            self.logger.info("Pygame mixer initialized successfully")
+            self.logger.info(f"Pygame mixer initialized successfully (freq={self.sample_rate}, channels={self.channels}, buffer={self.buffer_size})")
             
         except Exception as e:
             self.logger.error(f"Failed to initialize pygame mixer: {e}")

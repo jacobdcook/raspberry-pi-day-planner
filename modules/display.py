@@ -30,17 +30,19 @@ class DisplayManager:
     - Thread-safe UI updates
     """
     
-    def __init__(self, audio_manager: Any, event_logger: Any):
+    def __init__(self, audio_manager: Any, event_logger: Any, pi_detector=None):
         """
         Initialize the display manager.
         
         Args:
             audio_manager: Audio manager instance for playing sounds.
             event_logger: Event logger instance for recording user actions.
+            pi_detector: Pi detector instance for hardware-specific settings.
         """
         self.logger = logging.getLogger(__name__)
         self.audio_manager = audio_manager
         self.event_logger = event_logger
+        self.pi_detector = pi_detector
         
         # UI components
         self.root = None
@@ -51,16 +53,33 @@ class DisplayManager:
         # Thread-safe queue for UI updates
         self.ui_queue = queue.Queue()
         
-        # Settings
-        self.settings = {
-            'fullscreen': True,
-            'screen_timeout': 300,  # seconds
-            'brightness': 0.8,
-            'notification_duration': 60,
-            'max_snooze_count': 3
-        }
+        # Get hardware-specific settings
+        if self.pi_detector and self.pi_detector.is_raspberry_pi():
+            pi_config = self.pi_detector.get_display_config()
+            self.settings = {
+                'fullscreen': pi_config.get('fullscreen', True),
+                'screen_timeout': pi_config.get('screen_timeout', 300),
+                'brightness': pi_config.get('brightness', 0.8),
+                'notification_duration': 60,
+                'max_snooze_count': 3,
+                'font_size_multiplier': pi_config.get('font_size_multiplier', 1.2),
+                'vsync': pi_config.get('vsync', True),
+                'hardware_acceleration': pi_config.get('hardware_acceleration', True)
+            }
+        else:
+            # Default settings for simulation/desktop
+            self.settings = {
+                'fullscreen': False,
+                'screen_timeout': 0,
+                'brightness': 1.0,
+                'notification_duration': 60,
+                'max_snooze_count': 3,
+                'font_size_multiplier': 1.0,
+                'vsync': False,
+                'hardware_acceleration': False
+            }
         
-        self.logger.info("Display manager initialized")
+        self.logger.info(f"Display manager initialized for {'Pi' if self.pi_detector and self.pi_detector.is_raspberry_pi() else 'simulation'}")
     
     def start(self):
         """Start the display manager and create the main window."""

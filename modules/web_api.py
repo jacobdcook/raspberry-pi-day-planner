@@ -26,7 +26,7 @@ import uvicorn
 # Pydantic models for API requests/responses
 class TaskCreate(BaseModel):
     title: str = Field(..., min_length=1, max_length=100)
-    time: str = Field(..., regex=r"^([0-1]?[0-9]|2[0-3]):([0-5][0-9])$")
+    time: str = Field(..., pattern=r"^([0-1]?[0-9]|2[0-3]):([0-5][0-9])$")
     notes: Optional[str] = Field(None, max_length=500)
     priority: int = Field(1, ge=1, le=5)
     audio_alert: bool = True
