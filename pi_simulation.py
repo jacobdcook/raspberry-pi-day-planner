@@ -40,7 +40,16 @@ from progress_db import ProgressDatabase
 from task_timer import TaskTimer
 from adaptive_time import AdaptiveTimeManager
 from backlog_manager import BacklogManager
-from elevenlabs import generate, set_api_key
+try:
+    from elevenlabs import generate, set_api_key
+    ELEVENLABS_AVAILABLE = True
+except ImportError:
+    # Fallback if elevenlabs is not available
+    ELEVENLABS_AVAILABLE = False
+    def generate(*args, **kwargs):
+        return None
+    def set_api_key(*args, **kwargs):
+        pass
 import threading
 import tempfile
 
@@ -136,6 +145,23 @@ class PiSimulation:
         self.task_timer = TaskTimer()
         self.adaptive_time = AdaptiveTimeManager()
         self.backlog_manager = BacklogManager()
+        
+        # Setup ElevenLabs
+        if ELEVENLABS_AVAILABLE:
+            try:
+                # Try to load from config file first
+                try:
+                    from elevenlabs_config import ELEVENLABS_API_KEY
+                    set_api_key(ELEVENLABS_API_KEY)
+                    print("✅ ElevenLabs configured from config file")
+                except ImportError:
+                    # Use the key directly (for testing)
+                    set_api_key("sk_f8bd094182fd27ab6d2ba6d1447a3346ea745159f422970d")
+                    print("✅ ElevenLabs configured with test key")
+            except Exception as e:
+                print(f"⚠️ ElevenLabs setup failed: {e}")
+        else:
+            print("⚠️ ElevenLabs not available - voice features disabled")
         
         # Load schedule
         self.schedule = self.load_schedule()

@@ -1,18 +1,12 @@
 # ElevenLabs Configuration
-# Replace with your actual API key from https://elevenlabs.io/app/settings/api-keys
+# This file contains your ElevenLabs API key
+# IMPORTANT: This file should NOT be committed to git for security
 
-ELEVENLABS_API_KEY = "sk_13b7039f184db48b15ee5f12f8249e78d01edd41b17e6b5a"
-ELEVENLABS_VOICE_ID = "Charlie"  # Changed to available male voice (Charlie)
+ELEVENLABS_API_KEY = "sk_f8bd094182fd27ab6d2ba6d1447a3346ea745159f422970d"
 
-# Available voice IDs (you can find more at https://elevenlabs.io/app/voice-library)
-# Popular male voices:
-# - "Antoni" (Male, American) - RECOMMENDED
-# - "Josh" (Male, American)
-# - "Arnold" (Male, British)
-# - "Adam" (Male, American)
-# - "Sam" (Male, American)
-
-# Popular female voices:
-# - "Rachel" (Female, American)
-# - "Domi" (Female, American)
-# - "Bella" (Female, British) 
+# Voice settings
+VOICE_ID = "21m00Tcm4TlvDq8ikWAM"  # Rachel voice
+VOICE_SETTINGS = {
+    "stability": 0.5,
+    "similarity_boost": 0.5
+} 

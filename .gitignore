@@ -3,6 +3,11 @@ config/schedule.yaml
 config/schedule2.yaml
 config/peptide_schedule.yaml
 
+# API Keys and sensitive config
+elevenlabs_config.py
+*.key
+*.pem
+
 # Python
 __pycache__/
 *.py[cod]
