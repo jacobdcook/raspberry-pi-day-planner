@@ -7,7 +7,7 @@ echo "=========================================================="
 CURRENT_DIR=$(pwd)
 echo "📁 Current directory: $CURRENT_DIR"
 
-# Create the desktop shortcut
+# Create the desktop shortcut with Trusted=true
 echo "🔧 Creating desktop shortcut..."
 cat > "Raspberry Pi Day Planner.desktop" << EOF
 [Desktop Entry]
@@ -20,6 +20,7 @@ Icon=applications-development
 Terminal=true
 Categories=Utility;Development;
 StartupNotify=true
+Trusted=true
 EOF
 
 # Make the shortcut executable
@@ -32,6 +33,10 @@ cp "Raspberry Pi Day Planner.desktop" ~/Desktop/
 # Make desktop version executable
 chmod +x ~/Desktop/"Raspberry Pi Day Planner.desktop"
 
-echo "✅ Desktop shortcut installed!"
-echo "🎮 You can now double-click 'Raspberry Pi Day Planner' on your desktop"
+# Force it to be trusted (no popup)
+echo "🔐 Making shortcut trusted..."
+gio set ~/Desktop/"Raspberry Pi Day Planner.desktop" metadata::trusted true
+
+echo "✅ Desktop shortcut installed and trusted!"
+echo "🎮 You can now double-click 'Raspberry Pi Day Planner' on your desktop (no popup!)"
 echo "📁 Or run: ./run_simulation.sh from the terminal"
