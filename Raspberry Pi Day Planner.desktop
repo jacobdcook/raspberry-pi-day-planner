@@ -1,0 +1,10 @@
+[Desktop Entry]
+Version=1.0
+Type=Application
+Name=Raspberry Pi Day Planner
+Comment=Start the day planner simulation
+Exec=bash -c "cd /home/admin/raspberry-pi-day-planner && ./run_simulation.sh"
+Icon=applications-development
+Terminal=true
+Categories=Utility;Development;
+StartupNotify=true
