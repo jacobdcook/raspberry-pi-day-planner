@@ -2623,7 +2623,7 @@ class PiSimulation:
                         if self.current_view == "idle":
                             self.current_view = "voice_settings"
                     
-                    elif event.key == pygame.K_s:
+                    elif event.key == pygame.K_s and (event.mod & (pygame.KMOD_CTRL | pygame.KMOD_SHIFT | pygame.KMOD_ALT)) == 0:
                         self.update_interaction_time()
                         if self.current_view == "idle":
                             self.current_view = "stats"
