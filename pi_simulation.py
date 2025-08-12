@@ -292,7 +292,7 @@ class PiSimulation:
         print(f"🔤 Font sizes: Large={self.large_font_size}, Base={self.base_font_size}, Small={self.small_font_size}")
     
     def save_progress_on_exit(self):
-        """Save progress when the simulation exits."""
+        """Save progress when the simulation exits (summary and task details)."""
         try:
             if hasattr(self, 'progress_db') and self.progress_db:
                 # Get today's date
@@ -303,8 +303,9 @@ class PiSimulation:
                 skipped_count = len([t for t in self.today_tasks if t.get('skipped', False)])
                 total_count = len(self.today_tasks)
                 
-                # Save to database
+                # Save to database (both summary and details)
                 self.progress_db.save_daily_summary(today, total_count, completed_count, skipped_count)
+                self.progress_db.save_task_details(today, self.today_tasks)
                 print(f"✅ Progress saved: {completed_count}/{total_count} completed, {skipped_count} skipped")
         except Exception as e:
             print(f"❌ Error saving progress on exit: {e}")
@@ -2521,6 +2522,11 @@ class PiSimulation:
             # Handle events
             for event in pygame.event.get():
                 if event.type == pygame.QUIT:
+                    # Ensure full save on window close
+                    try:
+                        self._save_progress_on_exit()
+                    except Exception as _e:
+                        print(f"⚠️ Save on quit failed: {_e}")
                     running = False
                 
                 elif event.type == pygame.KEYDOWN:
@@ -2552,9 +2558,40 @@ class PiSimulation:
                         # Handle Enter key for exit confirmation
                         if self.show_popup and self.popup_type == "exit_confirmation":
                             self.show_popup = False
+                            try:
+                                self._save_progress_on_exit()
+                            except Exception as _e:
+                                print(f"⚠️ Save on confirm-exit failed: {_e}")
                             running = False
                             continue
                     
+                    # Save hotkeys: Ctrl+S and F5
+                    elif event.key == pygame.K_s and (event.mod & pygame.KMOD_CTRL):
+                        try:
+                            self._save_progress_manually()
+                            # Inform the user
+                            completed_tasks = len([t for t in self.today_tasks if t.get('completed', False)])
+                            total_tasks = len(self.today_tasks)
+                            skipped_tasks = len([t for t in self.today_tasks if t.get('skipped', False)])
+                            self.show_popup = True
+                            self.popup_title = "Progress Saved"
+                            self.popup_message = f"Saved {completed_tasks}/{total_tasks} completed, {skipped_tasks} skipped"
+                            self.popup_type = "info"
+                        except Exception as _e:
+                            print(f"❌ Error saving progress manually: {_e}")
+                    elif event.key == pygame.K_F5:
+                        try:
+                            self._save_progress_manually()
+                            completed_tasks = len([t for t in self.today_tasks if t.get('completed', False)])
+                            total_tasks = len(self.today_tasks)
+                            skipped_tasks = len([t for t in self.today_tasks if t.get('skipped', False)])
+                            self.show_popup = True
+                            self.popup_title = "Progress Saved"
+                            self.popup_message = f"Saved {completed_tasks}/{total_tasks} completed, {skipped_tasks} skipped"
+                            self.popup_type = "info"
+                        except Exception as _e:
+                            print(f"❌ Error saving progress manually (F5): {_e}")
+
                     elif event.key == pygame.K_t:
                         self.toggle_theme()
                     
@@ -2574,6 +2611,12 @@ class PiSimulation:
                                 self.current_task = next_task
                                 self.current_view = "task"
                                 self.announce_next_task(next_task)
+                            else:
+                                # Inform if there is no next task to start
+                                self.show_popup = True
+                                self.popup_title = "No Tasks Available"
+                                self.popup_message = "All tasks are completed or there are no tasks scheduled for today."
+                                self.popup_type = "info"
                     
                     elif event.key == pygame.K_v:
                         self.update_interaction_time()
@@ -2683,6 +2726,10 @@ class PiSimulation:
                             if hasattr(self, 'popup_yes_rect') and self.popup_yes_rect.collidepoint(mouse_pos):
                                 # User confirmed exit
                                 self.show_popup = False
+                                try:
+                                    self._save_progress_on_exit()
+                                except Exception as _e:
+                                    print(f"⚠️ Save on confirm-exit click failed: {_e}")
                                 running = False
                                 continue
                             elif hasattr(self, 'popup_no_rect') and self.popup_no_rect.collidepoint(mouse_pos):
@@ -2715,6 +2762,12 @@ class PiSimulation:
                                         callback=self._on_task_timer_complete
                                     )
                                     print(f"⏰ Started timer for '{next_task.get('title')}' - {duration} minutes")
+                            else:
+                                # Show popup if no tasks available
+                                self.show_popup = True
+                                self.popup_title = "No Tasks Available"
+                                self.popup_message = "All tasks are completed or there are no tasks scheduled for today."
+                                self.popup_type = "info"
                         
                         elif backlog_rect.collidepoint(mouse_pos):
                             self.current_view = "backlog"
