@@ -2880,7 +2880,7 @@ class PiSimulation:
                         if back_rect.collidepoint(mouse_pos):
                             self.current_view = "idle"
         
-        elif self.current_view == "settings":
+        if self.current_view == "settings":
             # Handle settings screen toggles
             back_rect, distraction_toggle_rect = self.draw_settings_screen()
             if back_rect.collidepoint(mouse_pos):
