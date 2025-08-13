@@ -2887,8 +2887,8 @@ class PiSimulation:
                 self.current_view = "idle"
             elif distraction_toggle_rect and distraction_toggle_rect.collidepoint(mouse_pos):
                 self.distraction_alert_enabled = not getattr(self, 'distraction_alert_enabled', False)
-                    
-                    elif self.current_view == "add_task":
+        
+        elif self.current_view == "add_task":
                         # Get button rectangles from add task screen
                         add_rect, cancel_rect = self.draw_add_task_screen()
                         
