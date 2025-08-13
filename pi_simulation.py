@@ -782,14 +782,13 @@ class PiSimulation:
         catch_up_tasks = self.get_catch_up_tasks()
         if catch_up_tasks:
             print(f"🔍 DEBUG: Found {len(catch_up_tasks)} catch-up tasks")
-            # Return the first uncompleted catch-up task
+            # Look for the first uncompleted/unskipped catch-up task
             for task in catch_up_tasks:
                 if not task.get('completed', False) and not task.get('skipped', False):
                     print(f"🔍 DEBUG: Returning catch-up task: {task['title']} (completed: {task.get('completed', False)}, skipped: {task.get('skipped', False)})")
                     return task
-            # If all catch-up tasks are completed/skipped, return None
-            print(f"🔍 DEBUG: All catch-up tasks completed/skipped")
-            return None
+            # All catch-up tasks are completed/skipped; fall back to regular tasks
+            print(f"🔍 DEBUG: All catch-up tasks completed/skipped; falling back to regular tasks")
         
         # If no catch-up tasks, return the next regular uncompleted task
         for task in self.today_tasks:
