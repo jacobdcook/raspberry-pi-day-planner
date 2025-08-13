@@ -175,6 +175,8 @@ class PiSimulation:
         # Initialize state variables
         self.current_time = datetime.now()
         self.today_tasks = self.tasks
+        # Disable distraction alerts by default (can be enabled later if needed)
+        self.distraction_alert_enabled = False
 
         # Merge any previously saved per-task statuses for today
         try:
@@ -1116,8 +1118,9 @@ class PiSimulation:
             self.screen.blit(instruction_surface, instruction_pos)
         
         # Buttons with responsive positioning
-        button_y = 0.75
-        button_spacing = 0.12
+        # Adjusted positions so the third row stays on-screen across displays
+        button_y = 0.64
+        button_spacing = 0.10
         
         # Start Task button
         start_rect = self.responsive_rect(0.1, button_y, 0.15, 0.08)
@@ -1181,8 +1184,15 @@ class PiSimulation:
         add_task_text, add_task_pos = self.responsive_text("Add Task", self.font, 
                                                           self.get_theme_color("text"), 0.175, button_y + button_spacing * 2 + 0.04, center=True)
         self.screen.blit(add_task_text, add_task_pos)
+
+        # NEW: Settings button (feature toggles)
+        settings_rect = self.responsive_rect(0.3, button_y + button_spacing * 2, 0.15, 0.08)
+        pygame.draw.rect(self.screen, self.get_theme_color("button"), settings_rect)
+        settings_text, settings_pos = self.responsive_text("Settings", self.font, 
+                                                         self.get_theme_color("text"), 0.375, button_y + button_spacing * 2 + 0.04, center=True)
+        self.screen.blit(settings_text, settings_pos)
         
-        return start_rect, backlog_rect, skipped_rect, stats_rect, voice_rect, focus_rect, all_tasks_rect, achievements_rect, add_task_rect
+        return start_rect, backlog_rect, skipped_rect, stats_rect, voice_rect, focus_rect, all_tasks_rect, achievements_rect, add_task_rect, settings_rect
 
     def draw_focus_mode_screen(self):
         """Draw the focus mode screen with Pomodoro timer."""
@@ -2533,8 +2543,9 @@ class PiSimulation:
             # Update current time
             self.current_time = datetime.now()
             
-            # Check for distraction
-            self.check_distraction()
+            # Check for distraction (disabled by default)
+            if self.distraction_alert_enabled:
+                self.check_distraction()
             
             # Check for Pomodoro completion
             if self.focus_mode:
@@ -2774,7 +2785,7 @@ class PiSimulation:
                     # Handle different screens
                     if self.current_view == "idle":
                         # Get button rectangles from idle screen
-                        start_rect, backlog_rect, skipped_rect, stats_rect, voice_rect, focus_rect, all_tasks_rect, achievements_rect, add_task_rect = self.draw_idle_screen()
+                        start_rect, backlog_rect, skipped_rect, stats_rect, voice_rect, focus_rect, all_tasks_rect, achievements_rect, add_task_rect, settings_rect = self.draw_idle_screen()
                         
                         if start_rect.collidepoint(mouse_pos):
                             next_task = self.get_next_task()
@@ -2830,7 +2841,9 @@ class PiSimulation:
                         
                         elif achievements_rect.collidepoint(mouse_pos):
                             self.current_view = "achievements"
-                        
+                        elif settings_rect.collidepoint(mouse_pos):
+                            self.current_view = "settings"
+                            
                         elif add_task_rect.collidepoint(mouse_pos):
                             # Initialize add task screen
                             self.new_task_title = ""
@@ -2866,6 +2879,14 @@ class PiSimulation:
                         
                         if back_rect.collidepoint(mouse_pos):
                             self.current_view = "idle"
+        
+        elif self.current_view == "settings":
+            # Handle settings screen toggles
+            back_rect, distraction_toggle_rect = self.draw_settings_screen()
+            if back_rect.collidepoint(mouse_pos):
+                self.current_view = "idle"
+            elif distraction_toggle_rect and distraction_toggle_rect.collidepoint(mouse_pos):
+                self.distraction_alert_enabled = not getattr(self, 'distraction_alert_enabled', False)
                     
                     elif self.current_view == "add_task":
                         # Get button rectangles from add task screen
@@ -3221,6 +3242,8 @@ class PiSimulation:
                 self.draw_distraction_alert_screen()
             elif self.current_view == "achievements":
                 self.draw_badges_screen()
+            elif self.current_view == "settings":
+                self.draw_settings_screen()
             elif self.current_view == "stats":
                 self.draw_stats_screen()
             elif self.current_view == "voice_settings":
@@ -4252,6 +4275,35 @@ class PiSimulation:
         back_text, back_pos = self.responsive_text("← Back", self.font, 
                                                  self.get_theme_color("text"), 0.5, 0.84, center=True)
         self.screen.blit(back_text, back_pos)
+
+    def draw_settings_screen(self):
+        """Draw settings screen for feature toggles."""
+        self.screen.fill(self.get_theme_color("background"))
+        
+        # Title
+        title_text, title_pos = self.responsive_text("⚙️ Settings", self.large_font,
+                                                   self.get_theme_color("text"), 0.5, 0.1, center=True)
+        self.screen.blit(title_text, title_pos)
+        
+        # Distraction alerts toggle
+        label_text = "Distraction Alerts"
+        status_on = getattr(self, 'distraction_alert_enabled', False)
+        status = "On" if status_on else "Off"
+        color = self.get_theme_color("success") if status_on else self.get_theme_color("warning")
+        label_surface, label_pos = self.responsive_text(label_text, self.font, self.get_theme_color("text"), 0.35, 0.35, center=True)
+        self.screen.blit(label_surface, label_pos)
+        toggle_rect = self.responsive_rect(0.6, 0.32, 0.1, 0.06)
+        pygame.draw.rect(self.screen, color, toggle_rect)
+        status_surface, status_pos = self.responsive_text(status, self.font, self.get_theme_color("text"), 0.65, 0.35, center=True)
+        self.screen.blit(status_surface, status_pos)
+        
+        # Back button
+        back_rect = self.responsive_rect(0.4, 0.8, 0.2, 0.08)
+        pygame.draw.rect(self.screen, self.get_theme_color("button"), back_rect)
+        back_text, back_pos = self.responsive_text("← Back", self.font, self.get_theme_color("text"), 0.5, 0.84, center=True)
+        self.screen.blit(back_text, back_pos)
+        
+        return back_rect, toggle_rect
 
     def draw_backlog_screen(self):
         """Draw the backlog screen."""
