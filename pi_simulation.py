@@ -175,6 +175,31 @@ class PiSimulation:
         # Initialize state variables
         self.current_time = datetime.now()
         self.today_tasks = self.tasks
+
+        # Merge any previously saved per-task statuses for today
+        try:
+            today_str = self.current_time.strftime('%Y-%m-%d')
+            if self.progress_db:
+                saved = self.progress_db.get_task_details_by_date(today_str)
+                if saved:
+                    for task in self.today_tasks:
+                        title = task.get('title')
+                        if title and title in saved:
+                            record = saved[title]
+                            # Restore completion/skipped flags; keep latest notes/time/duration if provided
+                            task['completed'] = bool(record.get('completed', 0))
+                            task['skipped'] = bool(record.get('skipped', 0))
+                            if record.get('time'):
+                                task['time'] = record.get('time')
+                            if record.get('notes'):
+                                task['notes'] = record.get('notes')
+                            if record.get('duration') is not None:
+                                task['duration'] = record.get('duration')
+                            if record.get('is_catch_up') is not None:
+                                task['is_catch_up'] = bool(record.get('is_catch_up'))
+                    print(f"🗄️ Restored task statuses for {today_str} from database")
+        except Exception as e:
+            print(f"⚠️ Could not restore saved task statuses: {e}")
         self.completed_tasks = []
         self.skipped_tasks = []
         self.completed_tasks_count = 0

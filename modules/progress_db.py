@@ -69,6 +69,23 @@ class ProgressDatabase:
                     )
                 ''')
                 
+                # Create task_details table to persist per-task status by date
+                cursor.execute('''
+                    CREATE TABLE IF NOT EXISTS task_details (
+                        id INTEGER PRIMARY KEY AUTOINCREMENT,
+                        date TEXT,
+                        title TEXT,
+                        time TEXT,
+                        notes TEXT,
+                        completed INTEGER DEFAULT 0,
+                        skipped INTEGER DEFAULT 0,
+                        duration INTEGER,
+                        is_catch_up INTEGER DEFAULT 0,
+                        updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+                        UNIQUE(date, title)
+                    )
+                ''')
+                
                 # Create badges table
                 cursor.execute('''
                     CREATE TABLE IF NOT EXISTS badges (
@@ -274,3 +291,57 @@ class ProgressDatabase:
         except Exception as e:
             print(f"❌ Error exporting data: {e}")
             return False 
+
+    def save_task_details(self, date, tasks):
+        """Persist per-task statuses for a given date.
+
+        Tasks is a list of dicts that may contain: title, time, notes, completed, skipped, duration, is_catch_up
+        """
+        try:
+            with sqlite3.connect(self.db_path) as conn:
+                cursor = conn.cursor()
+                for task in tasks:
+                    title = task.get('title')
+                    if not title:
+                        continue
+                    time_val = task.get('time')
+                    notes_val = task.get('notes')
+                    completed_val = 1 if task.get('completed', False) else 0
+                    skipped_val = 1 if task.get('skipped', False) else 0
+                    duration_val = task.get('duration')
+                    is_catch_up_val = 1 if task.get('is_catch_up', False) else 0
+                    cursor.execute('''
+                        INSERT INTO task_details (date, title, time, notes, completed, skipped, duration, is_catch_up)
+                        VALUES (?, ?, ?, ?, ?, ?, ?, ?)
+                        ON CONFLICT(date, title) DO UPDATE SET
+                            time=excluded.time,
+                            notes=excluded.notes,
+                            completed=excluded.completed,
+                            skipped=excluded.skipped,
+                            duration=excluded.duration,
+                            is_catch_up=excluded.is_catch_up,
+                            updated_at=CURRENT_TIMESTAMP
+                    ''', (date, title, time_val, notes_val, completed_val, skipped_val, duration_val, is_catch_up_val))
+                conn.commit()
+                print(f"✅ Task details saved for {date}: {len(tasks)} tasks")
+                return True
+        except Exception as e:
+            print(f"❌ Error saving task details: {e}")
+            return False
+
+    def get_task_details_by_date(self, date):
+        """Return a mapping of title -> saved status for a given date."""
+        try:
+            with sqlite3.connect(self.db_path) as conn:
+                conn.row_factory = sqlite3.Row
+                cursor = conn.cursor()
+                cursor.execute('''
+                    SELECT title, time, notes, completed, skipped, duration, is_catch_up
+                    FROM task_details
+                    WHERE date = ?
+                ''', (date,))
+                rows = cursor.fetchall()
+                return {row['title']: dict(row) for row in rows}
+        except Exception as e:
+            print(f"❌ Error loading task details for {date}: {e}")
+            return {}
