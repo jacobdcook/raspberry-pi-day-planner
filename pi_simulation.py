@@ -2579,15 +2579,21 @@ class PiSimulation:
                             self.current_view = "idle"
                     
                     elif event.key == pygame.K_RETURN:
-                        # Handle Enter key for exit confirmation
-                        if self.show_popup and self.popup_type == "exit_confirmation":
-                            self.show_popup = False
-                            try:
-                                self._save_progress_on_exit()
-                            except Exception as _e:
-                                print(f"⚠️ Save on confirm-exit failed: {_e}")
-                            running = False
-                            continue
+                        # Handle Enter key for popups
+                        if self.show_popup:
+                            if self.popup_type == "exit_confirmation":
+                                # Confirm exit
+                                self.show_popup = False
+                                try:
+                                    self._save_progress_on_exit()
+                                except Exception as _e:
+                                    print(f"⚠️ Save on confirm-exit failed: {_e}")
+                                running = False
+                                continue
+                            else:
+                                # Dismiss any info/warning/success popup
+                                self.show_popup = False
+                                continue
                     
                     # Save hotkeys: Ctrl+S and F5
                     elif event.key == pygame.K_s and (event.mod & pygame.KMOD_CTRL):
