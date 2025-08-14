@@ -209,11 +209,44 @@ class WebAPI:
         
         @self.app.get("/tasks", response_model=List[TaskResponse])
         async def get_tasks():
-            """Get all scheduled tasks."""
+            """Get all scheduled tasks for today."""
             try:
-                # This would need to be implemented to return actual tasks
-                # For now, return empty list
-                return []
+                if not hasattr(self.scheduler, "schedule") or self.scheduler.schedule is None:
+                    return []
+
+                # Convert scheduler tasks into API response format
+                responses: List[TaskResponse] = []
+                scheduled_jobs = getattr(self.scheduler, "scheduled_jobs", {})
+
+                for task in self.scheduler.schedule:
+                    try:
+                        task_id = self._generate_task_id_for_api(task)
+
+                        next_occurrence = None
+                        if task_id in scheduled_jobs and scheduled_jobs[task_id].next_run_time:
+                            next_occurrence = scheduled_jobs[task_id].next_run_time.isoformat()
+
+                        responses.append(
+                            TaskResponse(
+                                id=task_id,
+                                title=task.get("title", "Untitled"),
+                                time=task.get("time").strftime("%H:%M") if hasattr(task.get("time", ""), "strftime") else str(task.get("time", "")),
+                                notes=task.get("notes"),
+                                priority=int(task.get("priority", 3)),
+                                audio_alert=bool(task.get("audio_alert", True)),
+                                snooze_duration=int(task.get("snooze_duration", 15)),
+                                category=str(task.get("category", "general")),
+                                rrule=task.get("rrule"),
+                                next_occurrence=next_occurrence,
+                            )
+                        )
+                    except Exception as inner_e:
+                        # Skip bad task entries but continue others
+                        self.logger.warning(f"Failed to map task for API: {inner_e}")
+
+                # Sort by time string HH:MM
+                responses.sort(key=lambda t: t.time)
+                return responses
             except Exception as e:
                 self.logger.error(f"Get tasks error: {e}")
                 raise HTTPException(status_code=500, detail=str(e))
@@ -246,20 +279,37 @@ class WebAPI:
         async def complete_task(task_id: str):
             """Mark a task as completed."""
             try:
-                # This would need to be implemented
-                self.logger.info(f"Task {task_id} marked as completed")
+                task = self._find_task_by_id(task_id)
+                if task is None:
+                    raise HTTPException(status_code=404, detail="Task not found")
+
+                # Mark as completed in scheduler if supported
+                if hasattr(self.scheduler, "complete_task"):
+                    self.scheduler.complete_task(task)
+
                 return {"status": "completed", "task_id": task_id}
+            except HTTPException:
+                raise
             except Exception as e:
                 self.logger.error(f"Complete task error: {e}")
                 raise HTTPException(status_code=500, detail=str(e))
         
         @self.app.post("/tasks/{task_id}/snooze")
         async def snooze_task(task_id: str, duration: int = 15):
-            """Snooze a task."""
+            """Snooze a task (logs the snooze)."""
             try:
-                # This would need to be implemented
+                task = self._find_task_by_id(task_id)
+                if task is None:
+                    raise HTTPException(status_code=404, detail="Task not found")
+
+                # Log snooze (no reschedule logic implemented here)
+                if self.event_logger:
+                    self.event_logger.log_task_snoozed(task, duration)
+
                 self.logger.info(f"Task {task_id} snoozed for {duration} minutes")
                 return {"status": "snoozed", "task_id": task_id, "duration": duration}
+            except HTTPException:
+                raise
             except Exception as e:
                 self.logger.error(f"Snooze task error: {e}")
                 raise HTTPException(status_code=500, detail=str(e))
@@ -310,6 +360,25 @@ class WebAPI:
             self.logger.info(f"Creating task: {task.title} at {task.time}")
         except Exception as e:
             self.logger.error(f"Background task creation error: {e}")
+
+    def _generate_task_id_for_api(self, task: Dict[str, Any]) -> str:
+        """Replicate TaskScheduler's task ID generation for consistency."""
+        title = str(task.get("title", "")).replace(" ", "_").lower()
+        time_val = task.get("time", "")
+        time_str = time_val.strftime("%H%M") if hasattr(time_val, "strftime") else str(time_val).replace(":", "")
+        return f"{title}_{time_str}"
+
+    def _find_task_by_id(self, task_id: str) -> Optional[Dict[str, Any]]:
+        """Find the original task dict by its generated ID."""
+        try:
+            if not hasattr(self.scheduler, "schedule") or self.scheduler.schedule is None:
+                return None
+            for t in self.scheduler.schedule:
+                if self._generate_task_id_for_api(t) == task_id:
+                    return t
+            return None
+        except Exception:
+            return None
     
     def start(self, host: str = "0.0.0.0", port: int = 8000):
         """Start the web API server."""
